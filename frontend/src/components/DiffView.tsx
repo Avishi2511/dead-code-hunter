@@ -6,8 +6,16 @@ import { diffFileName, parseUnifiedDiff } from "@/lib/diff";
 
 type ViewType = "unified" | "split";
 
-export function DiffView({ diff, showCopy = true }: { diff: string; showCopy?: boolean }) {
-  const [viewType, setViewType] = useState<ViewType>("unified");
+export function DiffView({
+  diff,
+  showCopy = true,
+  defaultView = "unified",
+}: {
+  diff: string;
+  showCopy?: boolean;
+  defaultView?: ViewType;
+}) {
+  const [viewType, setViewType] = useState<ViewType>(defaultView);
   const [copied, setCopied] = useState(false);
   const files = useMemo(() => parseUnifiedDiff(diff), [diff]);
 

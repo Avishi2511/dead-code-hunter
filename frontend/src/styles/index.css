@@ -70,6 +70,30 @@ body {
 .react-flow__attribution {
   display: none;
 }
+.react-flow__node-group {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+/* Hero banner: a blood moon over ruins, drawn with gradients and one SVG silhouette */
+.hero {
+  background:
+    radial-gradient(circle at 82% 30%, #a8323f 0 2.6rem, rgba(122, 30, 44, 0.38) 2.7rem 7rem, transparent 20rem),
+    linear-gradient(180deg, #170d10 0%, #0e0a0b 75%);
+}
+.hero-slim {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(122, 30, 44, 0.4), transparent 16rem),
+    var(--surface);
+}
+
+.bar-track {
+  @apply h-1.5 overflow-hidden rounded-full bg-surface-2;
+}
+.bar-fill {
+  @apply h-full rounded-full bg-accent-hover;
+}
 
 /* Shiki output: line numbers + highlighted range */
 .code-excerpt pre {

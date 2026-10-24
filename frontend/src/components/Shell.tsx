@@ -1,4 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
+import { Logo } from "./Brand";
 
 export const DISCLAIMER =
   "Findings come from static analysis. They are strong signals, not proof — always review before removing.";
@@ -6,13 +7,12 @@ export const DISCLAIMER =
 export function Shell() {
   return (
     <div className="flex min-h-full flex-col">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
-          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-accent" />
-            Dead Code Hunter
+      <header className="border-b border-border bg-bg/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
+          <Link to="/" aria-label="Dead Code Hunter home">
+            <Logo />
           </Link>
-          <span className="font-mono text-xs text-muted">Python · FastAPI</span>
+          <span className="hidden font-mono text-xs text-muted sm:block">Python · FastAPI</span>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8">
@@ -25,10 +25,21 @@ export function Shell() {
   );
 }
 
-export function PageTitle({ title, children }: { title: string; children?: React.ReactNode }) {
+export function PageTitle({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+      </div>
       {children}
     </div>
   );

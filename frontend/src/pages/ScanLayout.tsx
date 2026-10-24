@@ -1,12 +1,15 @@
 import clsx from "clsx";
+import { Network, RefreshCw, Scissors, Search, Skull } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { NavLink, Outlet, useOutletContext, useParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { NavLink, Outlet, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { api, ApiError, type ScanView } from "@/api/client";
 import { useScan } from "@/api/hooks";
+import { GithubMark } from "@/components/Brand";
 import { ErrorBox, PageTitle } from "@/components/Shell";
 import { repoLabel, shortSha } from "@/lib/format";
 import { STAGES, stageStates } from "@/lib/stages";
+import { relativeTime } from "@/lib/time";
 import { useScanSelection } from "@/state/selection";
 
 export function useScanContext(): ScanView {
@@ -19,6 +22,12 @@ export function ScanLayout() {
   const { data: scan, error } = useScan(id);
   const started = useRef(false);
   const selected = Object.keys(useScanSelection(id)).length;
+  const navigate = useNavigate();
+  const rescan = useMutation({
+    mutationFn: () =>
+      api.createScan({ repoUrl: scan!.repo_url, ref: scan!.ref ?? undefined, subdir: scan!.subdir ?? undefined }),
+    onSuccess: ({ scanId }) => navigate(`/scans/${scanId}`),
+  });
 
   const run = () => {
     // The request returns when the job ends on the inline runner; progress comes from polling.
@@ -61,36 +70,53 @@ export function ScanLayout() {
   if (scan.status !== "done") return <Progress scan={scan} />;
 
   const tabs = [
-    { to: "", label: "Dashboard", end: true },
-    { to: "findings", label: "Findings" },
-    { to: "graph", label: "Graph" },
-    { to: "cleanup", label: `Cleanup${selected ? ` (${selected})` : ""}` },
+    { to: "", label: "Overview", icon: Skull, end: true },
+    { to: "findings", label: "Findings", icon: Search },
+    { to: "graph", label: "Code Graph", icon: Network },
+    { to: "cleanup", label: `Cleanup${selected ? ` (${selected})` : ""}`, icon: Scissors },
   ];
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <div className="font-mono text-sm">{repoLabel(scan.repo_url)}</div>
-          <div className="font-mono text-xs text-muted">
-            {[scan.subdir, scan.ref, shortSha(scan.commit_sha)].filter(Boolean).join(" · ")}
+      <header className="hero-slim card mb-4 flex flex-wrap items-center gap-4 p-4">
+        <span className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface-2">
+          <GithubMark size={22} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-mono text-base font-medium">{repoLabel(scan.repo_url)}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+            <span>Python · FastAPI</span>
+            {[scan.subdir, scan.ref, shortSha(scan.commit_sha)].filter(Boolean).map((part) => (
+              <span key={part} className="font-mono">
+                · {part}
+              </span>
+            ))}
+            {scan.finished_at && <span>· Last scanned {relativeTime(scan.finished_at)}</span>}
           </div>
         </div>
-        <nav className="flex gap-1">
-          {tabs.map((tab) => (
-            <NavLink
-              key={tab.label}
-              to={tab.to}
-              end={tab.end}
-              className={({ isActive }) =>
-                clsx("rounded-md px-3 py-1.5 text-sm", isActive ? "bg-accent text-text" : "text-muted hover:text-text")
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
+        <button className="btn btn-primary" onClick={() => rescan.mutate()} disabled={rescan.isPending}>
+          <RefreshCw size={15} className={rescan.isPending ? "animate-spin" : ""} />
+          Scan again
+        </button>
+      </header>
+      <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-border">
+        {tabs.map(({ to, label, icon: Icon, end }) => (
+          <NavLink
+            key={label}
+            to={to}
+            end={end}
+            className={({ isActive }) =>
+              clsx(
+                "-mb-px flex items-center gap-2 border-b-2 px-3.5 py-2.5 text-sm transition-colors",
+                isActive ? "border-accent-hover text-text" : "border-transparent text-muted hover:text-text",
+              )
+            }
+          >
+            <Icon size={15} />
+            {label}
+          </NavLink>
+        ))}
+      </nav>
       <Outlet context={scan} />
     </>
   );

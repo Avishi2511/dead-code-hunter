@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dch.result import (
     Action,
@@ -20,6 +20,18 @@ from dch.result import (
 )
 
 Status = Literal["pending", "running", "done", "failed"]
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    """SQLite returns naive timestamps; everything we store is UTC, and browsers need the offset."""
+    return value.replace(tzinfo=UTC) if value is not None and value.tzinfo is None else value
+
+
+class UtcModel(BaseModel):
+    @field_validator("created_at", "finished_at", check_fields=False)
+    @classmethod
+    def _utc(cls, value: datetime | None) -> datetime | None:
+        return _as_utc(value)
 
 
 class Camel(BaseModel):
@@ -38,7 +50,7 @@ class ScanCreated(Camel):
     scan_id: str = Field(alias="scanId")
 
 
-class ScanView(BaseModel):
+class ScanView(UtcModel):
     id: str
     repo_url: str
     ref: str | None
@@ -112,7 +124,7 @@ class CleanupCreated(Camel):
     cleanup_id: str = Field(alias="cleanupId")
 
 
-class CleanupView(BaseModel):
+class CleanupView(UtcModel):
     id: str
     scan_id: str
     status: Status

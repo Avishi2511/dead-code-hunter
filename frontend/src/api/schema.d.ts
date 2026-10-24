@@ -577,6 +577,11 @@ export interface components {
              */
             python_files: number;
             /**
+             * Python Lines
+             * @default 0
+             */
+            python_lines: number;
+            /**
              * Modules
              * @default 0
              */

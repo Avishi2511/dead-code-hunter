@@ -1,10 +1,12 @@
+import { ArrowRight, TriangleAlert } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useFindings } from "@/api/hooks";
-import { LevelBadge, TypeBadge } from "@/components/Badges";
-import { pluralize, typeLabel } from "@/lib/format";
+import { IconTile } from "@/components/Brand";
+import { typeLabel } from "@/lib/format";
+import { TILE_LABELS } from "@/lib/icons";
 import { useScanContext } from "./ScanLayout";
 
-const GRAVEYARD_SIZE = 8;
+const GRAVEYARD_SIZE = 6;
 
 export function Dashboard() {
   const { id = "" } = useParams();
@@ -12,21 +14,16 @@ export function Dashboard() {
   const { data: high } = useFindings(id, { level: "high" });
   const stats = scan.stats;
   const byType = Object.entries(stats.findings_by_type ?? {}).sort((a, b) => b[1] - a[1]);
-  const total = byType.reduce((sum, [, n]) => sum + n, 0);
+  const lines = stats.potential_cleanup_lines;
+  const share = stats.python_lines > 0 ? (lines / stats.python_lines) * 100 : 0;
   const graveyard = (high?.items ?? []).filter((f) => !f.covered_by).slice(0, GRAVEYARD_SIZE);
 
   return (
-    <div className="space-y-8">
-      <section className="grid gap-3 sm:grid-cols-3">
-        <Tile label="Python files" value={stats.python_files.toLocaleString()} />
-        <Tile label="Findings" value={total.toLocaleString()} />
-        <Tile label="Potential cleanup" value={`~${stats.potential_cleanup_lines.toLocaleString()} lines`} accent />
-      </section>
-
+    <div className="space-y-6">
       {scan.warnings.length > 0 && (
-        <section className="card border-accent/50 p-4">
-          <p className="label mb-2">Notes about this scan</p>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+        <section className="card flex gap-3 border-accent/50 p-4">
+          <TriangleAlert size={18} className="mt-0.5 shrink-0 text-[#d98a96]" />
+          <ul className="space-y-1 text-sm text-muted">
             {scan.warnings.map((warning) => (
               <li key={warning}>{warning}</li>
             ))}
@@ -34,64 +31,87 @@ export function Dashboard() {
         </section>
       )}
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold">By type</h2>
-        {byType.length === 0 ? (
-          <p className="text-sm text-muted">No dead code found. Either this project is tidy, or nothing here was reachable to judge.</p>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {byType.map(([type, count]) => (
-              <Link
-                key={type}
-                to={`findings?type=${type}`}
-                className="card flex items-center justify-between px-4 py-2.5 text-sm transition-colors hover:border-accent"
-              >
-                <span>{typeLabel(type)}</span>
-                <span className="font-mono text-muted">{count}</span>
-              </Link>
-            ))}
+      <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+        <div className="card p-5">
+          <p className="label">Codebase cleanup</p>
+          <p className="mt-2 font-mono text-3xl">
+            {stats.python_files.toLocaleString()} <span className="text-base text-muted">files scanned</span>
+          </p>
+          {byType.length === 0 ? (
+            <p className="mt-5 text-sm text-muted">
+              Nothing buried here. Either this project is tidy, or nothing was reachable enough to judge.
+            </p>
+          ) : (
+            <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
+              {byType.map(([type, count]) => (
+                <Link
+                  key={type}
+                  to={`findings?type=${type}`}
+                  className="group flex items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-surface-2"
+                >
+                  <IconTile type={type} />
+                  <span>
+                    <span className="block font-mono text-xl leading-none">{count}</span>
+                    <span className="mt-1 block text-xs text-muted">{TILE_LABELS[type] ?? typeLabel(type)}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card flex flex-col p-5">
+          <p className="label">Potential cleanup</p>
+          <p className="mt-2 font-mono text-3xl">
+            ~{lines.toLocaleString()} <span className="text-base text-muted">lines</span>
+          </p>
+          <div className="bar-track mt-4">
+            <div className="bar-fill" style={{ width: `${Math.min(Math.max(share, lines > 0 ? 2 : 0), 100)}%` }} />
           </div>
-        )}
+          <p className="mt-3 text-xs text-muted">
+            Estimated impact{" "}
+            <span className="font-mono text-[#d98a96]">~{share < 1 && share > 0 ? share.toFixed(1) : Math.round(share)}%</span>{" "}
+            of the codebase
+          </p>
+          <p className="mt-auto pt-4 text-xs text-muted">High and medium confidence findings only.</p>
+        </div>
       </section>
 
-      <section>
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold">The Graveyard</h2>
-          <Link to="findings?level=high" className="text-xs text-muted hover:text-text">
-            All high-confidence findings →
+      <section className="card">
+        <div className="flex items-baseline justify-between border-b border-border px-5 py-4">
+          <div>
+            <h2 className="label">The Graveyard</h2>
+            <p className="mt-1 text-xs text-muted">Highest confidence findings</p>
+          </div>
+          <Link to="findings?level=high" className="flex items-center gap-1 text-xs text-muted hover:text-text">
+            View all {high ? `(${high.total})` : ""} <ArrowRight size={13} />
           </Link>
         </div>
         {graveyard.length === 0 ? (
-          <p className="text-sm text-muted">Nothing buried with high confidence.</p>
+          <p className="px-5 py-6 text-sm text-muted">Nothing buried with high confidence.</p>
         ) : (
-          <ul className="card divide-y divide-border">
+          <ul className="divide-y divide-border">
             {graveyard.map((finding) => (
               <li key={finding.id}>
-                <Link to={`findings/${encodeURIComponent(finding.id)}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2">
-                  <LevelBadge level={finding.level} confidence={finding.confidence} />
-                  <TypeBadge type={finding.type} />
-                  <span className="truncate font-mono text-sm">{finding.name}</span>
-                  <span className="ml-auto hidden truncate font-mono text-xs text-muted sm:block">
-                    {finding.file}:{finding.line}
+                <Link
+                  to={`findings/${encodeURIComponent(finding.id)}`}
+                  className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-surface-2"
+                >
+                  <IconTile type={finding.type} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-mono text-sm">{finding.name}</span>
+                    <span className="block truncate font-mono text-xs text-muted">
+                      {finding.file}:{finding.line}
+                    </span>
                   </span>
+                  <span className="hidden text-xs text-muted sm:block">{typeLabel(finding.type)}</span>
+                  <span className="w-12 text-right font-mono text-sm text-[#d98a96]">{finding.confidence}%</span>
                 </Link>
               </li>
             ))}
           </ul>
         )}
-        {high && high.total > GRAVEYARD_SIZE && (
-          <p className="mt-2 text-xs text-muted">{pluralize(high.total - GRAVEYARD_SIZE, "more finding")} at high confidence.</p>
-        )}
       </section>
-    </div>
-  );
-}
-
-function Tile({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className={`card p-4 ${accent ? "border-accent" : ""}`}>
-      <div className="label">{label}</div>
-      <div className="mt-1.5 font-mono text-2xl">{value}</div>
     </div>
   );
 }

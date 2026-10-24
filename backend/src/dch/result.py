@@ -101,6 +101,7 @@ class GraphData(BaseModel):
 
 class ScanStats(BaseModel):
     python_files: int = 0
+    python_lines: int = 0
     modules: int = 0
     symbols: int = 0
     findings_by_type: dict[str, int] = Field(default_factory=dict)

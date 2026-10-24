@@ -100,6 +100,7 @@ def scan_tree(
         warnings.append("No entry points detected; unreferenced modules cannot be judged reliably")
     stats = ScanStats(
         python_files=len(tree.py_files),
+        python_lines=sum(tree.files[path].count("\n") + 1 for path in tree.py_files),
         modules=len(project.modules),
         symbols=sum(1 for n in graph.nodes.values() if n.kind in SYMBOL_KINDS),
         findings_by_type=dict(Counter(f.type for f in findings)),

@@ -30,10 +30,10 @@ export interface Placement {
 
 const ROOT_OPTIONS = {
   "elk.algorithm": "layered",
-  "elk.direction": "DOWN",
+  "elk.direction": "RIGHT",
   "elk.hierarchyHandling": "INCLUDE_CHILDREN",
-  "elk.layered.spacing.nodeNodeBetweenLayers": "56",
-  "elk.spacing.nodeNode": "28",
+  "elk.layered.spacing.nodeNodeBetweenLayers": "60",
+  "elk.spacing.nodeNode": "14",
   "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
 };
 
