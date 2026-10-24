@@ -267,9 +267,9 @@ class Collector:
             else:
                 local = module.split(".")[0]
             gn = self.binding_node(local, stmt, alias, module=module)
-            self.m.bindings.setdefault(local, []).append(
-                ImportBinding(gn.id, local, module, None, alias.asname is not None, gn.line or 0)
-            )
+            binding = ImportBinding(gn.id, local, module, None, alias.asname is not None, gn.line or 0)
+            self.m.bindings.setdefault(local, []).append(binding)
+            self.p.binding_by_id[gn.id] = binding
 
     def collect_import_from(self, node: cst.ImportFrom, stmt: cst.SimpleStatementLine) -> None:
         target = self.abs_module(len(node.relative), dotted(node.module))
@@ -280,9 +280,9 @@ class Collector:
             symbol = dotted(alias.name) or ""
             local = alias.asname.name.value if alias.asname else symbol
             gn = self.binding_node(local, stmt, alias, module=target, symbol=symbol)
-            self.m.bindings.setdefault(local, []).append(
-                ImportBinding(gn.id, local, target, symbol, alias.asname is not None, gn.line or 0)
-            )
+            binding = ImportBinding(gn.id, local, target, symbol, alias.asname is not None, gn.line or 0)
+            self.m.bindings.setdefault(local, []).append(binding)
+            self.p.binding_by_id[gn.id] = binding
 
 
 def build_index(tree: SourceTree, graph: CodeGraph) -> ProjectIndex:

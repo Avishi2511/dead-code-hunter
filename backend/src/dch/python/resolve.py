@@ -10,6 +10,8 @@ from libcst.metadata import BuiltinAssignment, GlobalScope
 from dch.python.collect import dotted
 from dch.python.model import UNKNOWN, ClassInfo, Ent, ImportBinding, ModuleInfo, ProjectIndex, Res
 
+VARIABLE_KINDS = ("variable", "fastapi_app", "router")
+
 
 @dataclass
 class LocalCtx:
@@ -76,9 +78,12 @@ class Resolver:
             return Ent("class", node_id)
         if node.kind in ("function", "method"):
             return Ent("function", node_id)
-        if node.kind == "variable":
+        if node.kind in VARIABLE_KINDS:
             cls = self.p.var_types.get(node_id)
-            return Ent("instance", cls) if cls else Ent("variable", node_id)
+            if cls:
+                return Ent("instance", cls)
+            external = self.p.var_external.get(node_id)
+            return Ent("external", external) if external else Ent("variable", node_id)
         return UNKNOWN
 
     def lookup_module_name(self, mod: ModuleInfo, name: str, seen: set | None = None) -> Res | None:
@@ -234,11 +239,30 @@ class Resolver:
         kind, ref = func.ent
         if kind == "class":
             return Res(Ent("instance", ref))
+        if kind == "external":
+            return Res(Ent("external", ref))
         if kind == "function" and ref in self.p.func_returns:
             return Res(Ent("instance", self.p.func_returns[ref]))
         if kind == "builtin" and ref == "super" and local and local.class_id:
             return Res(Ent("super", local.class_id))
         return Res(UNKNOWN)
+
+    def target_nodes(self, via: tuple[str, ...]) -> list[str]:
+        """Follow import bindings to the symbol/module nodes they finally refer to."""
+        out: list[str] = []
+        stack = list(via)
+        seen: set[str] = set()
+        while stack:
+            node_id = stack.pop()
+            if node_id in seen:
+                continue
+            seen.add(node_id)
+            binding = self.p.binding_by_id.get(node_id)
+            if binding is None:
+                out.append(node_id)
+            else:
+                stack.extend(self.binding_target(binding).via)
+        return out
 
     def external_name(
         self, mod: ModuleInfo, node: cst.BaseExpression, local: LocalCtx | None = None
@@ -343,6 +367,8 @@ def resolve_types(project: ProjectIndex, resolver: Resolver) -> None:
                 res = resolver.eval(mod, value)
                 if res.ent.kind == "instance":
                     project.var_types[node_id] = res.ent.ref
+                elif res.ent.kind == "external":
+                    project.var_external[node_id] = res.ent.ref
     for cid, info in project.classes.items():
         mod = project.modules[info.module]
         cls_node = project.cst_nodes[cid]

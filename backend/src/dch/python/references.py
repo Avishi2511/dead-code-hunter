@@ -11,10 +11,14 @@ from dch.python.resolve import LocalCtx, Resolver
 from dch.result import Location
 
 DYNAMIC_CALLS = {"importlib.import_module", "__import__", "globals"}
+DEPENDS_CALLS = {"fastapi.Depends", "fastapi.params.Depends", "fastapi.Security", "fastapi.params.Security"}
 
 
 class ReferenceVisitor(cst.CSTVisitor):
-    def __init__(self, project: ProjectIndex, resolver: Resolver, mod: ModuleInfo) -> None:
+    def __init__(self, project: ProjectIndex, resolver: Resolver, mod: ModuleInfo, hooks=()) -> None:
+        self.hooks = hooks
+        self.suppress = 0
+        self.depends_targets: set[cst.CSTNode] = set()
         self.p = project
         self.r = resolver
         self.m = mod
@@ -44,14 +48,24 @@ class ReferenceVisitor(cst.CSTVisitor):
             self.current_line = pos.start.line
         return Location(file=self.m.path, line=self.current_line)
 
+    def visit_suppressed(self, node: cst.CSTNode) -> None:
+        """Visit a subtree for bookkeeping (loaded names) without emitting reference edges."""
+        self.suppress += 1
+        try:
+            node.visit(self)
+        finally:
+            self.suppress -= 1
+
     def emit(self, via: tuple[str, ...], node: cst.CSTNode, kind: str = "references") -> None:
-        if not via:
+        if not via or self.suppress:
             return
         location = self.loc(node)
         for dst in via:
             self.g.add_edge(self.owner, dst, kind, location=location)
 
     def edge_kind(self, node: cst.CSTNode) -> str:
+        if node in self.depends_targets:
+            return "depends_on"
         return "calls" if node in self.call_funcs else "references"
 
     def enter(self, owner: str, local: LocalCtx | None) -> None:
@@ -73,8 +87,12 @@ class ReferenceVisitor(cst.CSTVisitor):
         attrs = self.g.nodes[node_id].attrs
         info = self.p.classes.get(attrs.get("class_id", ""))
         local = self.r.local_for_function(self.m, node, info, attrs.get("is_static", False))
+        handled: set[cst.Decorator] = set()
+        for hook in self.hooks:
+            handled |= hook.on_function(self, node, node_id)
         for decorator in node.decorators:
-            decorator.visit(self)
+            if decorator not in handled:
+                decorator.visit(self)
         self.enter(node_id, local)
         node.params.visit(self)
         if node.returns is not None:
@@ -210,11 +228,18 @@ class ReferenceVisitor(cst.CSTVisitor):
             self.p.unresolved_attrs.setdefault(node.attr.value, []).append(self.loc(node))
         return True
 
-    def visit_Call(self, node: cst.Call) -> None:
+    def visit_Call(self, node: cst.Call) -> bool:
+        for hook in self.hooks:
+            if hook.on_call(self, node):
+                return False
         self.call_funcs.add(node.func)
         name = dotted(node.func)
+        if node.args and isinstance(node.func, cst.Name | cst.Attribute):
+            if self.r.external_name(self.m, node.func, self.local) in DEPENDS_CALLS:
+                self.depends_targets.add(node.args[0].value)
         if name in DYNAMIC_CALLS or (name == "getattr" and self.module_like(node)):
             self.m.dynamic.append(self.loc(node))
+        return True
 
     def module_like(self, call: cst.Call) -> bool:
         if not call.args:
@@ -247,7 +272,7 @@ class ReferenceVisitor(cst.CSTVisitor):
                 self.locals[-1].types[node.target.value] = Ent("instance", cls)
 
 
-def extract_references(project: ProjectIndex, resolver: Resolver) -> None:
+def extract_references(project: ProjectIndex, resolver: Resolver, hooks=()) -> None:
     for mod in project.modules.values():
         assert mod.tree is not None
-        mod.tree.visit(ReferenceVisitor(project, resolver, mod))
+        mod.tree.visit(ReferenceVisitor(project, resolver, mod, hooks))

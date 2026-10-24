@@ -12,7 +12,9 @@ from dch.engine.detectors import detect_all
 from dch.engine.index import StringIndex, TextIndex
 from dch.engine.liveness import compute_liveness, production_roots, test_roots
 from dch.engine.scoring import Scorer, ScoringContext
+from dch.frameworks.decorators import apply_decorator_frameworks
 from dch.frameworks.entrypoints import find_entrypoints
+from dch.frameworks.fastapi import app_roots
 from dch.graph.model import CodeGraph
 from dch.python.builder import build_python_graph
 from dch.result import ScanResult, ScanStats
@@ -39,7 +41,9 @@ def scan_tree(
 
     reporter("analyzing", 50, "Finding entry points and computing reachability")
     entry = find_entrypoints(project, tree.files, config)
-    roots = production_roots(project, entry)
+    framework_roots = apply_decorator_frameworks(project, resolver)
+    apps, app_warnings = app_roots(project, entry)
+    roots = production_roots(project, entry, {**framework_roots, **apps})
     compute_liveness(graph, roots, test_roots(project))
 
     reporter("analyzing", 70, "Detecting dead code")
@@ -57,7 +61,7 @@ def scan_tree(
     findings = [scorer.score(c) for c in candidates]
     findings.sort(key=lambda f: (-f.confidence, f.file, f.line, f.name))
 
-    warnings = [*tree.warnings, *project.warnings, *config.warnings]
+    warnings = [*tree.warnings, *project.warnings, *config.warnings, *app_warnings]
     if not entry.modules:
         warnings.append("No entry points detected; unreferenced modules cannot be judged reliably")
     stats = ScanStats(

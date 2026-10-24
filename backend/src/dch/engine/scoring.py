@@ -93,6 +93,8 @@ class Scorer:
         summary = ""
         if cand.type == "unreachable_code":
             score, summary = self.unreachable(cand, evidence)
+        elif cand.type == "unused_route":
+            score, summary = self.route(cand, evidence)
         else:
             score += self.supporting_evidence(cand, evidence)
             score += self.weakening_evidence(cand, evidence)
@@ -249,7 +251,7 @@ class Scorer:
                     Evidence(
                         polarity="weakens",
                         code="string_literal_match",
-                        text=f"Module path `{dotted_name}` appears in a string at {hits[0].file}:{hits[0].line}",  # noqa: E501
+                        text=f"Module path `{dotted_name}` appears in a string at {hits[0].file}:{hits[0].line}",
                         locations=hits[:5],
                     )
                 )
@@ -373,6 +375,59 @@ class Scorer:
             else 94
         )
         return score, f"Lines {block.start}-{block.end} can never run: {block.reason}."
+
+    def route(self, cand: Candidate, evidence: list[Evidence]) -> tuple[int, str]:
+        shadowed_by = cand.extra.get("shadowed_by")
+        router = self.g.nodes[cand.extra["router"]]
+        delta = 0
+        if shadowed_by:
+            other = self.g.nodes[shadowed_by]
+            location = Location(file=other.file or "", line=other.line or 1)
+            evidence.append(
+                Evidence(
+                    polarity="supports",
+                    code="shadowed_route",
+                    text=f"`{other.name}` is registered first ({location.file}:{location.line}), so FastAPI never reaches this handler",
+                    locations=[location],
+                )
+            )
+            score = 95
+            summary = f"Route `{cand.name}` is shadowed by an earlier route with the same method and path."
+        else:
+            what = "Sub-application" if router.kind == "fastapi_app" else "Router"
+            evidence.append(
+                Evidence(
+                    polarity="supports",
+                    code="unmounted_router",
+                    text=f"{what} `{router.name}` in {router.file} is never included in or mounted on a live application",
+                    locations=[Location(file=router.file or "", line=router.line or 1)],
+                )
+            )
+            score = 70 if cand.test_only else 90
+            summary = f"Route `{cand.name}` is registered on a router that is never mounted."
+        state = self.ctx.project.extras.get("fastapi")
+        if state is not None and state.dynamic_includes and not shadowed_by:
+            evidence.append(
+                Evidence(
+                    polarity="weakens",
+                    code="dynamic_include",
+                    text="Some include_router() calls could not be resolved; this router may be mounted dynamically",
+                    locations=state.dynamic_includes[:3],
+                )
+            )
+            delta -= 25
+        mod = self.ctx.project.by_path.get(router.file or "")
+        if mod and mod.dynamic and not shadowed_by:
+            evidence.append(
+                Evidence(
+                    polarity="weakens",
+                    code="dynamic_access",
+                    text="The router module uses dynamic attribute access",
+                    locations=mod.dynamic[:3],
+                )
+            )
+            delta -= 15
+        return score + delta, summary
 
     # ---- references ------------------------------------------------------------------------
 

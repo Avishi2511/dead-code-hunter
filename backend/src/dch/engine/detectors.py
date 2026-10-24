@@ -90,6 +90,8 @@ def detect_symbols(project: ProjectIndex, config: Config, covered: set[str]) -> 
             outer = project.symbol_id(mod.path, node.name.rsplit(".", 1)[0])
             if outer in g.nodes and g.nodes[outer].liveness != "live":
                 continue
+        if node.attrs.get("route_handler"):
+            continue  # reported through its route
         if node.kind in ("function", "variable") and node.name.startswith("__"):
             continue
         found.append(
@@ -158,11 +160,39 @@ def detect_unreachable(project: ProjectIndex, config: Config, covered: set[str])
     return found
 
 
+def detect_routes(project: ProjectIndex, config: Config, covered: set[str]) -> list[Candidate]:
+    g = project.graph
+    found: list[Candidate] = []
+    for node in g.nodes.values():
+        if node.kind != "route" or node.liveness == "live":
+            continue
+        handler = g.nodes[node.attrs["handler"]]
+        mod = project.by_path[handler.file or ""]
+        if mod.is_test or mod.name in covered or config.is_ignored(mod.path, handler.name):
+            continue
+        shadowed_by = node.attrs.get("shadowed_by")
+        found.append(
+            Candidate(
+                "unused_route",
+                node.id,
+                node.name,
+                node.file or "",
+                node.line or 1,
+                node.end_line or 1,
+                test_only=node.liveness == "test_only" and not shadowed_by,
+                node_ids=[node.id, handler.id],
+                extra={"shadowed_by": shadowed_by, "router": node.attrs["router"]},
+            )
+        )
+    return found
+
+
 def detect_all(project: ProjectIndex, config: Config) -> list[Candidate]:
     modules, covered = detect_modules(project, config)
     return [
         *modules,
         *detect_symbols(project, config, covered),
         *detect_imports(project, config, covered),
+        *detect_routes(project, config, covered),
         *detect_unreachable(project, config, covered),
     ]

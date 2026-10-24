@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from dch.frameworks.fastapi import FastApiHooks, classify_apps, finalize_routes
 from dch.graph.model import CodeGraph
 from dch.python.collect import build_index
 from dch.python.model import ProjectIndex
@@ -66,7 +67,9 @@ def build_python_graph(tree: SourceTree, graph: CodeGraph) -> tuple[ProjectIndex
     resolve_types(project, resolver)
     add_import_edges(project, resolver)
     add_class_edges(project, resolver)
-    extract_references(project, resolver)
+    classify_apps(project)
+    extract_references(project, resolver, hooks=[FastApiHooks(project)])
+    finalize_routes(project)
     find_unreachable(project)
     logger.info("Graph: %d nodes, %d edges", len(graph.nodes), len(graph.edges))
     return project, resolver

@@ -127,6 +127,9 @@ class ProjectIndex:
         self.node_module: dict[str, str] = {}
         self.func_returns: dict[str, str] = {}
         self.var_types: dict[str, str] = {}
+        self.var_external: dict[str, str] = {}
+        self.binding_by_id: dict[str, ImportBinding] = {}
+        self.extras: dict[str, Any] = {}
         self.unresolved_attrs: dict[str, list[Location]] = {}
         self.string_literals: list[StringLit] = []
         self.unreachable: list[UnreachableBlock] = []
