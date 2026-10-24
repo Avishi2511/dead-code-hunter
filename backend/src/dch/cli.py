@@ -12,6 +12,7 @@ from pathlib import Path
 from dch.result import ScanResult
 from dch.scan import scan_tree
 from dch.source.base import GitHubTarballSource, LocalDirSource, SourceError, SourceTree
+from dch.verify.run import VERIFIER_CHOICES
 
 logger = logging.getLogger("dch")
 
@@ -56,7 +57,12 @@ def add_source_args(parser: argparse.ArgumentParser) -> None:
 
 
 def cmd_scan(args: argparse.Namespace) -> int:
-    result = scan_tree(load_tree(args), include_graph=args.graph)
+    result = scan_tree(
+        load_tree(args),
+        include_graph=args.graph,
+        verifier=args.verifier,
+        time_budget_s=args.time_budget,
+    )
     if args.output:
         Path(args.output).write_text(result.model_dump_json(indent=2), encoding="utf-8")
     print_summary(result, args.limit)
@@ -77,6 +83,18 @@ def build_parser() -> argparse.ArgumentParser:
     add_source_args(scan)
     scan.add_argument("-o", "--output", help="write the full ScanResult JSON here")
     scan.add_argument("--graph", action="store_true", help="include the code graph in the output")
+    scan.add_argument(
+        "--verifier",
+        choices=VERIFIER_CHOICES,
+        default=os.environ.get("VERIFIER", "auto"),
+        help="type checker used to double-check candidates (env: VERIFIER)",
+    )
+    scan.add_argument(
+        "--time-budget",
+        type=float,
+        default=float(os.environ.get("SCAN_TIME_BUDGET_S", 0)) or None,
+        help="seconds after which optional stages are skipped (env: SCAN_TIME_BUDGET_S)",
+    )
     scan.add_argument("--limit", type=int, default=40, help="findings to print")
     scan.set_defaults(func=cmd_scan)
 

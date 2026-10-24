@@ -14,9 +14,9 @@ from dch.source.base import LocalDirSource
 FIXTURE = Path(__file__).resolve().parents[3] / "fixtures" / "haunted-fastapi"
 
 
-@pytest.fixture(scope="module")
-def result() -> ScanResult:
-    return scan_tree(LocalDirSource(FIXTURE).load())
+@pytest.fixture(scope="module", params=["none", "jedi"])
+def result(request) -> ScanResult:
+    return scan_tree(LocalDirSource(FIXTURE).load(), verifier=request.param)
 
 
 @pytest.fixture(scope="module")
@@ -49,6 +49,10 @@ def test_precision_and_recall_meet_targets(result, expected):
     targets = expected["targets"]
     assert metrics["precision_high"] >= targets["precision_high"], metrics["false_high"]
     assert metrics["recall"] >= targets["recall"], metrics["missing"]
+
+
+def test_every_planted_item_is_found(result, expected):
+    assert evaluate(result, expected)["missing"] == []
 
 
 def test_traps_are_not_flagged(result, expected):

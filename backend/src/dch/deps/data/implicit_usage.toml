@@ -1,0 +1,75 @@
+# Distributions that are needed without ever being imported by name.
+# when_imported: used if the project imports any of these dotted names (or something below them)
+# when_text:     used if the text appears in a string literal or a non-Python config file
+# when_files:    used if one of these paths exists in the project
+# dist_prefix:   rule applies to every distribution starting with this prefix
+# requires_dist: ... but only if that distribution is itself used
+
+[[rule]]
+dist = "python-multipart"
+when_imported = ["fastapi.UploadFile", "fastapi.File", "fastapi.Form", "fastapi.params.Form", "starlette.formparsers"]
+
+[[rule]]
+dist = "email-validator"
+when_imported = ["pydantic.EmailStr", "pydantic.NameEmail", "pydantic.networks.EmailStr"]
+
+[[rule]]
+dist = "httpx"
+when_imported = ["fastapi.testclient", "starlette.testclient"]
+
+[[rule]]
+dist = "jinja2"
+when_imported = ["fastapi.templating", "starlette.templating"]
+
+[[rule]]
+dist = "itsdangerous"
+when_imported = ["starlette.middleware.sessions"]
+when_text = ["SessionMiddleware"]
+
+[[rule]]
+dist = "bcrypt"
+when_text = ["bcrypt"]
+
+[[rule]]
+dist = "python-dotenv"
+when_text = ["env_file"]
+
+[[rule]]
+dist = "psycopg2-binary"
+when_text = ["postgresql://", "postgresql+psycopg2", "postgres://"]
+
+[[rule]]
+dist = "psycopg2"
+when_text = ["postgresql://", "postgresql+psycopg2", "postgres://"]
+
+[[rule]]
+dist = "asyncpg"
+when_text = ["postgresql+asyncpg"]
+
+[[rule]]
+dist = "aiosqlite"
+when_text = ["sqlite+aiosqlite"]
+
+[[rule]]
+dist = "pymysql"
+when_text = ["mysql+pymysql"]
+
+[[rule]]
+dist = "mysqlclient"
+when_text = ["mysql://", "mysql+mysqldb"]
+
+[[rule]]
+dist = "uvicorn"
+when_text = ["uvicorn.workers", "UvicornWorker"]
+
+[[rule]]
+dist = "alembic"
+when_files = ["alembic.ini", "alembic/env.py", "migrations/env.py"]
+
+[[rule]]
+dist_prefix = "pytest-"
+requires_dist = "pytest"
+
+[[rule]]
+dist_prefix = "types-"
+requires_stub_base = true

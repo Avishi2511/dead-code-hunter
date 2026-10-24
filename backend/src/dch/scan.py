@@ -8,6 +8,7 @@ from collections import Counter
 from collections.abc import Callable
 
 from dch.config import load_config
+from dch.deps.analyze import analyze_dependencies
 from dch.engine.detectors import detect_all
 from dch.engine.index import StringIndex, TextIndex
 from dch.engine.liveness import compute_liveness, production_roots, test_roots
@@ -19,6 +20,7 @@ from dch.graph.model import CodeGraph
 from dch.python.builder import build_python_graph
 from dch.result import ScanResult, ScanStats
 from dch.source.base import SourceTree
+from dch.verify.run import run_verification
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +33,15 @@ def _noop(stage: str, percent: int, message: str) -> None:
 
 
 def scan_tree(
-    tree: SourceTree, *, reporter: ProgressReporter = _noop, include_graph: bool = False
+    tree: SourceTree,
+    *,
+    reporter: ProgressReporter = _noop,
+    include_graph: bool = False,
+    verifier: str = "none",
+    time_budget_s: float | None = None,
 ) -> ScanResult:
     started = time.perf_counter()
+    deadline = time.monotonic() + time_budget_s if time_budget_s else None
     graph = CodeGraph()
     reporter("parsing", 10, f"Parsing {len(tree.py_files)} Python files")
     project, resolver = build_python_graph(tree, graph)
@@ -43,25 +51,30 @@ def scan_tree(
     entry = find_entrypoints(project, tree.files, config)
     framework_roots = apply_decorator_frameworks(project, resolver)
     apps, app_warnings = app_roots(project, entry)
-    roots = production_roots(project, entry, {**framework_roots, **apps})
+    dep_candidates, dep_roots = analyze_dependencies(project, tree.files, config)
+    roots = production_roots(project, entry, {**framework_roots, **apps, **dep_roots})
     compute_liveness(graph, roots, test_roots(project))
 
     reporter("analyzing", 70, "Detecting dead code")
-    candidates = detect_all(project, config)
+    candidates = [*detect_all(project, config), *dep_candidates]
 
-    reporter("scoring", 85, "Scoring findings")
+    reporter("verifying", 78, "Verifying references with a type checker")
+    outcome, verify_warnings = run_verification(project, tree.files, candidates, verifier, deadline)
+
+    reporter("scoring", 90, "Scoring findings")
     ctx = ScoringContext(
         project,
         resolver,
         StringIndex(project),
         TextIndex(tree.files),
         any_dynamic_import=any(m.dynamic for m in project.modules.values()),
+        verified_no_refs=outcome.verified_no_refs if outcome else set(),
     )
     scorer = Scorer(ctx)
     findings = [scorer.score(c) for c in candidates]
     findings.sort(key=lambda f: (-f.confidence, f.file, f.line, f.name))
 
-    warnings = [*tree.warnings, *project.warnings, *config.warnings, *app_warnings]
+    warnings = [*tree.warnings, *project.warnings, *config.warnings, *app_warnings, *verify_warnings]
     if not entry.modules:
         warnings.append("No entry points detected; unreferenced modules cannot be judged reliably")
     stats = ScanStats(

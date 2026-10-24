@@ -95,6 +95,8 @@ class Scorer:
             score, summary = self.unreachable(cand, evidence)
         elif cand.type == "unused_route":
             score, summary = self.route(cand, evidence)
+        elif cand.type == "unused_dependency":
+            score, summary = self.dependency(cand, evidence)
         else:
             score += self.supporting_evidence(cand, evidence)
             score += self.weakening_evidence(cand, evidence)
@@ -375,6 +377,45 @@ class Scorer:
             else 94
         )
         return score, f"Lines {block.start}-{block.end} can never run: {block.reason}."
+
+    def dependency(self, cand: Candidate, evidence: list[Evidence]) -> tuple[int, str]:
+        names = ", ".join(f"`{n}`" for n in cand.extra["names"])
+        score = BASE_SCORES["unused_dependency"]
+        evidence.append(
+            Evidence(
+                polarity="supports",
+                code="no_imports",
+                text=f"No Python file imports {names}",
+            )
+        )
+        evidence.append(
+            Evidence(
+                polarity="supports",
+                code="no_cli_usage",
+                text="Not used by a Dockerfile, CI workflow, script or tool configuration",
+            )
+        )
+        if cand.extra["guessed"]:
+            evidence.append(
+                Evidence(
+                    polarity="weakens",
+                    code="heuristic_mapping",
+                    text="The import name was guessed from the distribution name (not in the curated map)",
+                )
+            )
+            score -= 20
+        if cand.extra["weak"]:
+            weak = cand.extra["weak"]
+            evidence.append(
+                Evidence(
+                    polarity="weakens",
+                    code="config_mention",
+                    text=f"The name appears in {weak[0].file}:{weak[0].line}",
+                    locations=weak[:5],
+                )
+            )
+            score -= 15
+        return score, f"Dependency `{cand.name}` is declared in {cand.file} but never used."
 
     def route(self, cand: Candidate, evidence: list[Evidence]) -> tuple[int, str]:
         shadowed_by = cand.extra.get("shadowed_by")
