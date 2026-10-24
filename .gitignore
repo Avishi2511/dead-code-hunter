@@ -8,3 +8,4 @@ node_modules/
 dist/
 *.patch
 !fixtures/**/*.patch
+dch-out/

@@ -261,9 +261,10 @@ def finalize_routes(project: ProjectIndex) -> None:
         if route_id in g.nodes:
             route_id = f"{route_id}@{handler.file}:{handler.line}"
         route = g.add_node(Node(
-            route_id, "route", f"{method} {full}", handler.file, reg.decorator_line, handler.end_line,
+            route_id, "route", f"{method} {full}", handler.file, handler.line, handler.end_line,
             attrs={"method": method, "full_path": full, "router": reg.parent, "handler": reg.handler,
-                   "mounted": mounted, "dynamic_path": reg.path is None},
+                   "mounted": mounted, "dynamic_path": reg.path is None,
+                   "decorator_line": reg.decorator_line},
         ))  # fmt: skip
         g.add_edge(route_id, reg.handler, "handles")
         shadow_key = (method, PARAM.sub("{}", full))

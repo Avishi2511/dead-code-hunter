@@ -9,7 +9,8 @@ import os
 import sys
 from pathlib import Path
 
-from dch.result import ScanResult
+from dch.cleanup.engine import run_cleanup
+from dch.result import ScanResult, Selection
 from dch.scan import scan_tree
 from dch.source.base import GitHubTarballSource, LocalDirSource, SourceError, SourceTree
 from dch.verify.run import VERIFIER_CHOICES
@@ -56,6 +57,21 @@ def add_source_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--repo", help="repository identifier used in graph ids")
 
 
+def add_scan_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--verifier",
+        choices=VERIFIER_CHOICES,
+        default=os.environ.get("VERIFIER", "auto"),
+        help="type checker used to double-check candidates (env: VERIFIER)",
+    )
+    parser.add_argument(
+        "--time-budget",
+        type=float,
+        default=float(os.environ.get("SCAN_TIME_BUDGET_S", 0)) or None,
+        help="seconds after which optional stages are skipped (env: SCAN_TIME_BUDGET_S)",
+    )
+
+
 def cmd_scan(args: argparse.Namespace) -> int:
     result = scan_tree(
         load_tree(args),
@@ -66,6 +82,49 @@ def cmd_scan(args: argparse.Namespace) -> int:
     if args.output:
         Path(args.output).write_text(result.model_dump_json(indent=2), encoding="utf-8")
     print_summary(result, args.limit)
+    return 0
+
+
+LEVEL_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+
+def parse_selection(text: str) -> Selection:
+    finding_id, _, action = text.partition(":")
+    return Selection(finding_id=finding_id, action=action or "remove")  # type: ignore[arg-type]
+
+
+def cmd_cleanup(args: argparse.Namespace) -> int:
+    tree = load_tree(args)
+    scan = scan_tree(tree, verifier=args.verifier, time_budget_s=args.time_budget)
+    if args.select:
+        selections = [parse_selection(s) for s in args.select]
+    else:
+        wanted_types = set(args.types.split(",")) if args.types else None
+        limit = LEVEL_ORDER[args.min_level]
+        selections = [
+            Selection(finding_id=f.id)
+            for f in scan.findings
+            if LEVEL_ORDER[f.level] <= limit
+            and not (f.suggestion and f.suggestion.manual)
+            and (wanted_types is None or f.type in wanted_types)
+        ]
+    selections += [Selection(finding_id=i, action="mark_alive") for i in args.mark_alive or []]
+    result = run_cleanup(
+        tree, scan, selections, typecheck="none" if args.no_typecheck else "auto",
+        validate=not args.no_validate, time_budget_s=args.time_budget,
+    )  # fmt: skip
+    out = Path(args.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "dead-code-cleanup.patch").write_text(result.patch, encoding="utf-8", newline="")
+    (out / "CLEANUP_REPORT.md").write_text(result.report_md, encoding="utf-8")
+    summary, validation = result.summary, result.validation
+    print(f"{summary.findings} findings applied across {summary.files_changed} files "
+          f"(-{summary.lines_removed} +{summary.lines_added} lines)")  # fmt: skip
+    print(f"validation: compileall={validation.compileall} ruff={validation.ruff} "
+          f"typecheck={validation.typecheck}")  # fmt: skip
+    for issue in [*validation.ruff_new_issues, *validation.typecheck_new_errors]:
+        print(f"  new issue: {issue}")
+    print(f"wrote {out / 'dead-code-cleanup.patch'} and {out / 'CLEANUP_REPORT.md'}")
     return 0
 
 
@@ -83,20 +142,23 @@ def build_parser() -> argparse.ArgumentParser:
     add_source_args(scan)
     scan.add_argument("-o", "--output", help="write the full ScanResult JSON here")
     scan.add_argument("--graph", action="store_true", help="include the code graph in the output")
-    scan.add_argument(
-        "--verifier",
-        choices=VERIFIER_CHOICES,
-        default=os.environ.get("VERIFIER", "auto"),
-        help="type checker used to double-check candidates (env: VERIFIER)",
-    )
-    scan.add_argument(
-        "--time-budget",
-        type=float,
-        default=float(os.environ.get("SCAN_TIME_BUDGET_S", 0)) or None,
-        help="seconds after which optional stages are skipped (env: SCAN_TIME_BUDGET_S)",
-    )
+    add_scan_args(scan)
     scan.add_argument("--limit", type=int, default=40, help="findings to print")
     scan.set_defaults(func=cmd_scan)
+
+    cleanup = sub.add_parser(
+        "cleanup", help="build a patch removing selected findings (never touches the repo)"
+    )
+    add_source_args(cleanup)
+    add_scan_args(cleanup)
+    cleanup.add_argument("--min-level", choices=["high", "medium", "low"], default="high")
+    cleanup.add_argument("--types", help="comma separated finding types to include")
+    cleanup.add_argument("--select", nargs="+", metavar="ID[:ACTION]", help="explicit finding ids")
+    cleanup.add_argument("--mark-alive", nargs="+", metavar="ID", help="findings to record as alive")
+    cleanup.add_argument("--out-dir", default="dch-out")
+    cleanup.add_argument("--no-validate", action="store_true")
+    cleanup.add_argument("--no-typecheck", action="store_true")
+    cleanup.set_defaults(func=cmd_cleanup)
 
     schema = sub.add_parser("schema", help="print the ScanResult JSON schema")
     schema.set_defaults(func=cmd_schema)

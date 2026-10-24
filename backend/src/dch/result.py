@@ -51,6 +51,7 @@ class Suggestion(BaseModel):
     cascades: list[str] = Field(default_factory=list)
     static_check: Literal["pass", "fail", "skipped"] = "skipped"
     contains_ids: list[str] = Field(default_factory=list)
+    static_notes: list[str] = Field(default_factory=list)
     manual: bool = False
 
 
@@ -69,6 +70,7 @@ class Finding(BaseModel):
     references: list[Reference] = Field(default_factory=list)
     impact_lines: int = 0
     suggestion: Suggestion | None = None
+    details: dict[str, Any] = Field(default_factory=dict)  # type-specific data for cleanup transforms
 
 
 class GraphNode(BaseModel):

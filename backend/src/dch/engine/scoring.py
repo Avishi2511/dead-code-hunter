@@ -116,6 +116,7 @@ class Scorer:
             evidence=evidence,
             references=self.references(cand),
             impact_lines=cand.end_line - cand.line + 1,
+            details=self.details(cand),
         )
 
     # ---- summaries -------------------------------------------------------------------------
@@ -416,6 +417,34 @@ class Scorer:
             )
             score -= 15
         return score, f"Dependency `{cand.name}` is declared in {cand.file} but never used."
+
+    def details(self, cand: Candidate) -> dict:
+        """Type-specific facts the cleanup transforms need (kept with the finding)."""
+        node = self.g.nodes.get(cand.node_id)
+        if cand.type == "unused_import" and node is not None:
+            return {"stmt_start": node.attrs["stmt_start"], "stmt_end": node.attrs["stmt_end"]}
+        if cand.type == "unreachable_code":
+            block = cand.extra["block"]
+            return {"kind": block.kind, "anchor": block.anchor, "scope": block.scope}
+        if cand.type == "unused_dependency":
+            return {"declarations": [d.__dict__ for d in cand.extra["declarations"]]}
+        if cand.type == "unused_route":
+            router = self.g.nodes[cand.extra["router"]]
+            routes = [e.dst for e in self.g.out_edges(router.id) if e.kind == "registers_route"]
+            all_routes = {
+                n.id for n in self.g.nodes.values() if n.kind == "route" and n.attrs["router"] == router.id
+            }
+            included = any(e.kind in ("includes_router", "mounts") for e in self.g.in_edges(router.id))
+            return {
+                "router_id": router.id,
+                "router_name": router.name,
+                "router_file": router.file,
+                "router_line": router.line,
+                "router_end_line": router.end_line,
+                "router_route_count": len(all_routes) or len(routes),
+                "router_included": included,
+            }
+        return {}
 
     def route(self, cand: Candidate, evidence: list[Evidence]) -> tuple[int, str]:
         shadowed_by = cand.extra.get("shadowed_by")

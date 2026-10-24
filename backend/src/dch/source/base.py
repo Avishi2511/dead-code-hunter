@@ -67,6 +67,7 @@ class SourceTree:
     files: dict[str, str]
     commit_sha: str | None = None
     warnings: list[str] = field(default_factory=list)
+    prefix: str = ""  # project root relative to the repository root, for patch paths
 
     @property
     def py_files(self) -> list[str]:
@@ -99,7 +100,9 @@ def detect_project_root(root: Path, max_depth: int = 3) -> Path:
     return root
 
 
-def read_tree(root: Path, repo: str, limits: Limits, commit_sha: str | None = None) -> SourceTree:
+def read_tree(
+    root: Path, repo: str, limits: Limits, commit_sha: str | None = None, prefix: str = ""
+) -> SourceTree:
     files: dict[str, str] = {}
     warnings: list[str] = []
     py_count = 0
@@ -122,7 +125,7 @@ def read_tree(root: Path, repo: str, limits: Limits, commit_sha: str | None = No
                 files[rel] = handle.read()
         except UnicodeDecodeError:
             warnings.append(f"Skipped non-UTF-8 file: {rel}")
-    return SourceTree(repo=repo, files=files, commit_sha=commit_sha, warnings=warnings)
+    return SourceTree(repo=repo, files=files, commit_sha=commit_sha, warnings=warnings, prefix=prefix)
 
 
 class LocalDirSource:
@@ -141,7 +144,8 @@ class LocalDirSource:
         if not root.is_dir():
             raise SourceError(f"Subdirectory not found: {self.subdir}")
         logger.info("Reading project at %s", root)
-        return read_tree(root, self.repo, self.limits)
+        prefix = root.relative_to(self.path).as_posix()
+        return read_tree(root, self.repo, self.limits, prefix="" if prefix == "." else prefix)
 
 
 def safe_extract(archive: Path, dest: Path) -> Path:
@@ -208,4 +212,11 @@ class GitHubTarballSource:
             root = top / self.subdir if self.subdir else detect_project_root(top)
             if not root.is_dir():
                 raise SourceError(f"Subdirectory not found: {self.subdir}")
-            return read_tree(root, f"{self.owner}/{self.name}", self.limits, commit_sha=sha)
+            prefix = root.relative_to(top).as_posix()
+            return read_tree(
+                root,
+                f"{self.owner}/{self.name}",
+                self.limits,
+                commit_sha=sha,
+                prefix="" if prefix == "." else prefix,
+            )

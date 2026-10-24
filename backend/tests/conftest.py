@@ -35,6 +35,6 @@ class Scan:
 @pytest.fixture
 def scan():
     def run(files: dict[str, str]) -> Scan:
-        return Scan(scan_tree(make_tree(files)))
+        return Scan(scan_tree(make_tree(files), suggestions=False))
 
     return run

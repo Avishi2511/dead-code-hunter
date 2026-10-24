@@ -7,6 +7,7 @@ import time
 from collections import Counter
 from collections.abc import Callable
 
+from dch.cleanup.engine import compute_suggestions
 from dch.config import load_config
 from dch.deps.analyze import analyze_dependencies
 from dch.engine.detectors import detect_all
@@ -39,6 +40,8 @@ def scan_tree(
     include_graph: bool = False,
     verifier: str = "none",
     time_budget_s: float | None = None,
+    suggestions: bool = True,
+    static_checks: bool = True,
 ) -> ScanResult:
     started = time.perf_counter()
     deadline = time.monotonic() + time_budget_s if time_budget_s else None
@@ -74,7 +77,25 @@ def scan_tree(
     findings = [scorer.score(c) for c in candidates]
     findings.sort(key=lambda f: (-f.confidence, f.file, f.line, f.name))
 
-    warnings = [*tree.warnings, *project.warnings, *config.warnings, *app_warnings, *verify_warnings]
+    suggestion_warnings: list[str] = []
+    if suggestions:
+        reporter("suggestions", 95, "Preparing suggested changes")
+        suggestion_warnings = compute_suggestions(
+            tree,
+            ScanResult(repo=tree.repo, findings=findings),
+            static_checks=static_checks,
+            deadline=deadline,
+        )
+    covered = {cid for f in findings if f.suggestion for cid in f.suggestion.contains_ids}
+
+    warnings = [
+        *tree.warnings,
+        *project.warnings,
+        *config.warnings,
+        *app_warnings,
+        *verify_warnings,
+        *suggestion_warnings,
+    ]
     if not entry.modules:
         warnings.append("No entry points detected; unreferenced modules cannot be judged reliably")
     stats = ScanStats(
@@ -83,7 +104,9 @@ def scan_tree(
         symbols=sum(1 for n in graph.nodes.values() if n.kind in SYMBOL_KINDS),
         findings_by_type=dict(Counter(f.type for f in findings)),
         findings_by_level=dict(Counter(f.level for f in findings)),
-        potential_cleanup_lines=sum(f.impact_lines for f in findings if f.level != "low"),
+        potential_cleanup_lines=sum(
+            f.impact_lines for f in findings if f.level != "low" and f.id not in covered
+        ),
         duration_s=round(time.perf_counter() - started, 3),
     )
     reporter("done", 100, f"{len(findings)} findings")
