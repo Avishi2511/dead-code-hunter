@@ -1,0 +1,23 @@
+[project]
+name = "haunted"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "pydantic",
+    "pydantic-settings",
+    "email-validator",
+    "python-multipart",
+    "psycopg2-binary",
+    "celery",
+    "requests",
+    "arrow",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx", "ruff"]
+
+[tool.ruff]
+line-length = 100
