@@ -113,6 +113,7 @@ def scan_tree(
     return ScanResult(
         repo=tree.repo,
         commit_sha=tree.commit_sha,
+        project_root=tree.prefix,
         stats=stats,
         warnings=warnings,
         findings=findings,

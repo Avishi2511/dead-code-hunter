@@ -11,7 +11,7 @@ service and the React frontend (M5) are not part of it yet.
 ## Setup
 
 ```bash
-uv sync --extra basedpyright   # drop the extra to use the pure-Python Jedi verifier only
+uv sync --extra basedpyright --extra api   # drop basedpyright to use the pure-Python Jedi verifier only
 ```
 
 Python 3.12+. `basedpyright` brings its own Node runtime; without it the Jedi fallback is used.
@@ -39,6 +39,20 @@ uv run dch cleanup <dir> --select <id>:mark_alive
 Validation after a cleanup is static and informational: `compileall`, `ruff` (F401/F811/F821) and
 `basedpyright` diagnostics, each diffed against the original tree. The project's tests are not run.
 
+## API
+
+```bash
+uv run uvicorn dch_api.main:app_factory --factory --reload      # http://127.0.0.1:8000/docs
+DATABASE_URL=postgresql://... uv run alembic upgrade head       # Postgres schema (SQLite dev DBs are created automatically)
+```
+
+Configuration is environment-only (`../.env.example`): `DATABASE_URL`, `GITHUB_TOKEN`, `JOB_RUNNER`
+(`inline` runs a job inside its `POST .../run` request, `background` on a worker thread),
+`VERIFIER`, `SCAN_TIME_BUDGET_S`, `MAX_PY_FILES`, `MAX_TARBALL_MB`, `MAINTENANCE_TOKEN`, `SERVE_STATIC`.
+Clients always call `run` and then poll `GET` status, so the same frontend works with both runners.
+`/api/maintenance/purge` (POST or GET, `Authorization: Bearer $MAINTENANCE_TOKEN`) deletes old scans;
+on Vercel set `CRON_SECRET` to the same value so the cron entry in `vercel.json` can authenticate.
+
 ## Layout
 
 ```text
@@ -52,12 +66,15 @@ src/dch/
   engine/      liveness, detectors, scoring + evidence
   cleanup/     transforms, overlaps, cascades, diffs, patch + report
   validate/    compileall / ruff / type-check validation
+src/dch_api/
+  routes/ services/ jobs/ db/   FastAPI endpoints, scan/cleanup execution, JobRunner, SQLAlchemy models
+migrations/                     Alembic
 ```
 
 ## Tests
 
 ```bash
-uv run pytest        # unit tests + golden tests against fixtures/haunted-fastapi
+uv run pytest        # unit, golden (fixtures/haunted-fastapi) and API tests (SQLite)
 uv run ruff check src tests
 ```
 
