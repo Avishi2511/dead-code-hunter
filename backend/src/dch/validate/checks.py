@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 RUFF_RULES = "F401,F811,F821"
 SUBPROCESS_TIMEOUT_S = 120
+# Explicit encoding: Windows would otherwise use cp1252 and fail on non-ASCII source text.
+TEXT_RUN = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace"}
 
 
 def ruff_issues(path: str, source: str) -> Counter[tuple[str, str, str]]:
@@ -29,7 +31,7 @@ def ruff_issues(path: str, source: str) -> Counter[tuple[str, str, str]]:
     proc = subprocess.run(
         [sys.executable, "-m", "ruff", "check", "--isolated", "--select", RUFF_RULES,
          "--output-format", "json", "--stdin-filename", path, "-"],  # fmt: skip
-        input=source, capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT_S, check=False,
+        input=source, **TEXT_RUN, timeout=SUBPROCESS_TIMEOUT_S, check=False,
     )  # fmt: skip
     if proc.returncode not in (0, 1):
         raise RuntimeError(f"ruff failed: {proc.stderr.strip()[:200]}")
@@ -61,7 +63,7 @@ def typecheck_errors(files: dict[str, str]) -> Counter[tuple[str, str, str]] | N
         materialise(files, root)
         proc = subprocess.run(
             [executable, "--outputjson", str(root)],
-            capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT_S, cwd=root, check=False,
+            **TEXT_RUN, timeout=SUBPROCESS_TIMEOUT_S, cwd=root, check=False,
         )  # fmt: skip
         try:
             report = json.loads(proc.stdout)
@@ -96,7 +98,7 @@ def validate_cleanup(
             materialise({p: new_files[p] for p in changed_py}, Path(tmp))
             proc = subprocess.run(
                 [sys.executable, "-m", "compileall", "-q", "-f", *changed_py],
-                capture_output=True, text=True, cwd=tmp, timeout=SUBPROCESS_TIMEOUT_S, check=False,
+                **TEXT_RUN, cwd=tmp, timeout=SUBPROCESS_TIMEOUT_S, check=False,
             )  # fmt: skip
         report.compileall = "pass" if proc.returncode == 0 else "fail"
         if proc.returncode != 0:
@@ -111,7 +113,7 @@ def validate_cleanup(
             new_issues += ruff_issues(path, new_files[path]) - before
         report.ruff_new_issues = [format_issue(i) for i in sorted(new_issues.elements())]
         report.ruff = "fail" if new_issues else "pass"
-    except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
+    except (RuntimeError, OSError, UnicodeError, subprocess.SubprocessError) as exc:
         report.ruff = "skipped"
         report.notes.append(f"ruff skipped: {exc}")
 
@@ -129,7 +131,7 @@ def validate_cleanup(
         fresh = after - before
         report.typecheck_new_errors = [format_issue(i) for i in sorted(fresh.elements())]
         report.typecheck = "fail" if fresh else "pass"
-    except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
+    except (RuntimeError, OSError, UnicodeError, subprocess.SubprocessError) as exc:
         report.typecheck = "skipped"
         report.notes.append(f"type check skipped: {exc}")
     return report

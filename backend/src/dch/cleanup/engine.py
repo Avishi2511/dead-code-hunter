@@ -96,7 +96,7 @@ def static_check(old_files: dict[str, str], applied: Applied) -> tuple[str, list
             before = ruff_issues(path, old_files[path]) if path in old_files else Counter()
             fresh = ruff_issues(path, applied.files[path]) - before
             notes += [format_issue(i) for i in fresh.elements()]
-    except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
+    except (RuntimeError, OSError, UnicodeError, subprocess.SubprocessError) as exc:
         logger.warning("Static check unavailable: %s", exc)
         return "skipped", []
     return ("fail" if notes else "pass"), notes

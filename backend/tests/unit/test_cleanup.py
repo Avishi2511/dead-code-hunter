@@ -236,3 +236,11 @@ def test_references_from_tests_make_the_suggestion_fail():
     assert suggestion is not None
     assert suggestion.static_check == "fail"
     assert any("tests" in n for n in suggestion.static_notes)
+
+
+def test_static_checks_handle_non_ascii_source_on_any_platform():
+    # Windows pipes subprocess text through cp1252 unless an encoding is given explicitly.
+    from dch.validate.checks import ruff_issues
+
+    source = '"""Values ≤ limit — café."""\nimport os\n'
+    assert ("a.py", "F401") in {(f, code) for f, code, _ in ruff_issues("a.py", source)}
