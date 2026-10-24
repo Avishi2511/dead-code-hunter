@@ -11,8 +11,11 @@ from dch.result import (
     Action,
     CleanupSummary,
     Finding,
+    FindingType,
     GraphEdge,
     GraphNode,
+    Level,
+    ScanStats,
     ValidationReport,
 )
 
@@ -44,7 +47,7 @@ class ScanView(BaseModel):
     status: Status
     stage: str
     progress: int
-    stats: dict[str, Any]
+    stats: ScanStats
     warnings: list[str]
     error: str | None
     created_at: datetime
@@ -53,13 +56,13 @@ class ScanView(BaseModel):
 
 class FindingSummary(BaseModel):
     id: str
-    type: str
+    type: FindingType
     name: str
     file: str
     line: int
     end_line: int
     confidence: int
-    level: str
+    level: Level
     summary: str
     impact_lines: int
     static_check: str | None = None

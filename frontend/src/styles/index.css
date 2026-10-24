@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0b0a0a;
+  --surface: #141213;
+  --surface-2: #1b1819;
+  --border: #2a2526;
+  --text: #ede6e1;
+  --text-muted: #8e8582;
+  --accent: #7a1e2c;
+  --accent-hover: #93263a;
+  --accent-soft: rgba(122, 30, 44, 0.22);
+  --added-soft: rgba(110, 130, 120, 0.18);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg font-sans text-text antialiased;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-text transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent hover:border-accent-hover hover:bg-accent-hover;
+  }
+  .card {
+    @apply rounded-lg border border-border bg-surface;
+  }
+  .input {
+    @apply w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-none;
+  }
+  .label {
+    @apply text-xs font-medium uppercase tracking-wider text-muted;
+  }
+}
+
+/* react-diff-view, restyled to the dark burgundy palette */
+.diff {
+  --diff-background-color: var(--surface);
+  --diff-text-color: var(--text);
+  --diff-font-family: "JetBrains Mono", ui-monospace, monospace;
+  --diff-gutter-insert-background-color: var(--added-soft);
+  --diff-gutter-delete-background-color: var(--accent-soft);
+  --diff-code-insert-background-color: var(--added-soft);
+  --diff-code-delete-background-color: var(--accent-soft);
+  --diff-code-insert-edit-background-color: rgba(110, 130, 120, 0.4);
+  --diff-code-delete-edit-background-color: rgba(122, 30, 44, 0.5);
+  --diff-gutter-insert-text-color: var(--text);
+  --diff-gutter-delete-text-color: var(--text);
+  --diff-code-insert-text-color: var(--text);
+  --diff-code-delete-text-color: var(--text);
+  --diff-code-insert-edit-text-color: var(--text);
+  --diff-code-delete-edit-text-color: var(--text);
+  --diff-omit-gutter-line-color: var(--accent);
+  font-size: 12.5px;
+}
+.diff-hunk .diff-decoration-content {
+  color: var(--text-muted);
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+/* Shiki output: line numbers + highlighted range */
+.code-excerpt pre {
+  background: transparent !important;
+  margin: 0;
+}
+.code-excerpt .line,
+.code-excerpt pre > span.line {
+  display: inline-block;
+  width: 100%;
+  padding: 0 0.75rem 0 0;
+}
+.code-excerpt .line::before {
+  content: attr(data-line);
+  display: inline-block;
+  width: 3rem;
+  margin-right: 0.75rem;
+  padding-right: 0.5rem;
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+}
+.code-excerpt .line.hl {
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
+}

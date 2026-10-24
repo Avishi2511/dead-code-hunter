@@ -12,3 +12,8 @@ dch-out/
 
 # local dev databases
 *.db
+
+# copied from node_modules by scripts/copy-elk.mjs
+frontend/public/elk-worker.min.js
+frontend/dist/
+frontend/node_modules/

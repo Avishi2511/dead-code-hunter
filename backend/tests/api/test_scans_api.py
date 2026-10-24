@@ -66,6 +66,17 @@ def test_graph_endpoints(client):
     assert client.get(f"/api/scans/{scan_id}/graph", params={"focus": "nope"}).status_code == 404
 
 
+def test_neighborhood_of_a_synthetic_finding_node_falls_back_to_its_module(client):
+    scan_id = scan_fixture(client)
+    finding = client.get(f"/api/scans/{scan_id}/findings", params={"type": "unreachable_code"}).json()[
+        "items"
+    ][0]
+    node_id = client.get(f"/api/scans/{scan_id}/findings/{finding['id']}").json()["node_ids"][0]
+    view = client.get(f"/api/scans/{scan_id}/graph", params={"focus": node_id}).json()
+    assert view["focus"] == [node_id.split("#")[0]]
+    assert view["nodes"][0]["kind"] == "module"
+
+
 def test_neighborhood_is_capped_and_reports_hidden_neighbours():
     from dch.result import GraphData, GraphEdge, GraphNode
     from dch_api.services.graph_queries import neighborhood

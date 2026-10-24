@@ -20,7 +20,8 @@ def health(session: SessionDep):
     return Health(status="ok", database="ok")
 
 
-@router.api_route("/maintenance/purge", methods=["POST", "GET"], response_model=PurgeResult)
+@router.get("/maintenance/purge", response_model=PurgeResult, include_in_schema=False)
+@router.post("/maintenance/purge", response_model=PurgeResult)
 def purge(session: SessionDep, settings: SettingsDep, authorization: Annotated[str | None, Header()] = None):
     """Delete old scans. GET is accepted too because most cron services (Vercel Cron) only issue GETs."""
     token = settings.maintenance_token

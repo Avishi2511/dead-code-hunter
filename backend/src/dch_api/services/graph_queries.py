@@ -18,6 +18,8 @@ class UnknownNode(KeyError):
 
 def neighborhood(graph: GraphData, focus: list[str], hops: int = 2, cap: int = NEIGHBORHOOD_CAP) -> GraphView:
     nodes = {n.id: n for n in graph.nodes}
+    # Findings such as unreachable code point at a synthetic id (`repo:file#unreachable@30`); show its module.
+    focus = [f if f in nodes else f.split("#")[0] for f in focus]
     missing = [f for f in focus if f not in nodes]
     if missing:
         raise UnknownNode(missing[0])
