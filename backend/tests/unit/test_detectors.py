@@ -273,3 +273,18 @@ def test_ignore_rules_hide_findings(scan):
         }
     )
     assert s.find("unused_function", "keep_me") == []
+
+
+def test_alembic_migration_scripts_are_not_reported(scan):
+    s = scan(
+        {
+            "app.py": f"def main(): pass\n{MAIN}\n",
+            "alembic/env.py": "import os\n\ndef run(): pass\n",
+            "alembic/versions/0001_init.py": (
+                "import sqlmodel\n\nrevision = '0001'\ndown_revision = None\n\n"
+                "def upgrade(): pass\n\ndef downgrade(): pass\n"
+            ),
+        }
+    )
+    assert s.find(file="alembic/versions/0001_init.py") == []
+    assert s.find(file="alembic/env.py") == []

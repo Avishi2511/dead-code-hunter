@@ -7,7 +7,10 @@
 
 [[rule]]
 dist = "python-multipart"
-when_imported = ["fastapi.UploadFile", "fastapi.File", "fastapi.Form", "fastapi.params.Form", "starlette.formparsers"]
+when_imported = [
+    "fastapi.UploadFile", "fastapi.File", "fastapi.Form", "fastapi.params.Form", "starlette.formparsers",
+    "fastapi.security.OAuth2PasswordRequestForm", "fastapi.security.OAuth2PasswordRequestFormStrict",
+]
 
 [[rule]]
 dist = "email-validator"
@@ -33,6 +36,14 @@ when_text = ["bcrypt"]
 [[rule]]
 dist = "python-dotenv"
 when_text = ["env_file"]
+
+[[rule]]
+dist = "psycopg"
+when_text = ["postgresql+psycopg", "postgresql://", "postgres://"]
+
+[[rule]]
+dist = "psycopg-binary"
+when_text = ["postgresql+psycopg", "postgresql://", "postgres://"]
 
 [[rule]]
 dist = "psycopg2-binary"

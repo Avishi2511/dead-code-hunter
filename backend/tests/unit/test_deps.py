@@ -114,3 +114,18 @@ def test_mention_in_config_files_weakens_but_does_not_clear(scan):
         },
     )
     assert found["orphan"].confidence == 77
+
+
+def test_oauth2_form_and_sqlalchemy_url_scheme_imply_dependencies(scan):
+    found = dep_names(
+        scan,
+        {
+            "pyproject.toml": '[project]\ndependencies = ["python-multipart", "psycopg[binary]", "stale"]\n',
+            "app.py": (
+                "from fastapi.security import OAuth2PasswordRequestForm\n"
+                "URL = 'postgresql+psycopg://u@h/db'\n"
+                f"def main(form: OAuth2PasswordRequestForm): return URL\n{MAIN}\n"
+            ),
+        },
+    )
+    assert set(found) == {"stale"}

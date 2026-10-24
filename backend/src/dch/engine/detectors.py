@@ -43,6 +43,12 @@ def skip_module(mod: ModuleInfo) -> bool:
     return name in SKIP_MODULE_NAMES or mod.has_main_guard or "alembic" in parts or "migrations" in parts
 
 
+def is_migration(mod: ModuleInfo) -> bool:
+    """Alembic scripts are driven by the framework by name (upgrade, revision, ...), not by imports."""
+    parts = mod.path.split("/")
+    return "alembic" in parts or "migrations" in parts
+
+
 def noqa_suppresses(line_text: str) -> bool:
     match = NOQA.search(line_text)
     if not match:
@@ -82,7 +88,9 @@ def detect_symbols(project: ProjectIndex, config: Config, covered: set[str]) -> 
         if node.kind not in KIND_TO_TYPE or node.liveness == "live":
             continue
         mod = project.modules[project.node_module[node.id]]
-        if mod.is_test or mod.name in covered or config.is_ignored(mod.path, node.name):
+        if mod.is_test or is_migration(mod) or mod.name in covered:
+            continue
+        if config.is_ignored(mod.path, node.name):
             continue
         if node.kind == "method" and g.nodes[node.attrs["class_id"]].liveness != "live":
             continue  # covered by the class finding
@@ -114,7 +122,7 @@ def detect_imports(project: ProjectIndex, config: Config, covered: set[str]) -> 
         if node.kind != "import":
             continue
         mod = project.modules[project.node_module[node.id]]
-        if mod.is_test or mod.name in covered or mod.path.endswith("__init__.py"):
+        if mod.is_test or is_migration(mod) or mod.name in covered or mod.path.endswith("__init__.py"):
             continue
         if node.name in mod.loaded or (mod.exports and node.name in mod.exports):
             continue
