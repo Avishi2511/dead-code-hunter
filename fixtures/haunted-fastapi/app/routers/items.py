@@ -3,13 +3,14 @@ from fastapi import APIRouter, File, UploadFile
 from app.config import DEFAULT_PAGE_SIZE
 from app.schemas import ItemOut
 from app.services import get_user
-from app.utils import format_user, slugify
+from app.utils import feature, format_user, parse, slugify
 
 router = APIRouter(prefix="/api/items", tags=["items"])
 
 
 @router.get("/", response_model=list[ItemOut])
 def list_items(limit: int = DEFAULT_PAGE_SIZE):
+    limit = parse(limit) if feature() else limit
     return [ItemOut(id=1, name=slugify("First item"))][:limit]
 
 
