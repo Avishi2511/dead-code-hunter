@@ -44,13 +44,24 @@ export function IconTile({
   return (
     <span
       className={clsx(
-        "flex shrink-0 items-center justify-center rounded-lg border",
+        "flex shrink-0 items-center justify-center rounded-b-md rounded-t-full border",
         box,
         muted ? "border-border bg-surface-2 text-muted" : "border-accent/70 bg-accent-soft text-[#d98a96]",
       )}
     >
       <Icon size={glyph} strokeWidth={1.75} />
     </span>
+  );
+}
+
+/** Quiet empty state: the ruins, an epitaph, and an optional action. */
+export function EmptyState({ epitaph, children }: { epitaph: string; children?: React.ReactNode }) {
+  return (
+    <div className="card relative overflow-hidden px-6 pb-16 pt-10 text-center">
+      <Ruins className="pointer-events-none absolute inset-x-0 bottom-0 h-14 w-full text-bg" />
+      <p className="title relative text-lg italic text-muted">{epitaph}</p>
+      {children && <div className="relative mt-4">{children}</div>}
+    </div>
   );
 }
 

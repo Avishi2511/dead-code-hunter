@@ -3,11 +3,12 @@ import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, type GraphView } from "@/api/client";
 import { useFindings, useModuleGraph } from "@/api/hooks";
-import { IconTile } from "@/components/Brand";
 import { GraphCanvas, type SymbolRow } from "@/components/GraphCanvas";
+import { EmptyState, IconTile } from "@/components/Brand";
 import { ErrorBox } from "@/components/Shell";
 import { TYPE_LABELS, typeLabel } from "@/lib/format";
 import { kindIcon } from "@/lib/icons";
+import { EPITAPHS, NAV, livenessLabel } from "@/lib/lexicon";
 
 const packageOf = (file: string | null | undefined): string | null =>
   file && file.includes("/") ? file.split("/")[0] : null;
@@ -105,9 +106,9 @@ export function GraphPage() {
     <>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Code Graph</h1>
+          <h1 className="title text-3xl">{NAV.catacombs.label}</h1>
           <p className="mt-1 text-sm text-muted">
-            How your modules depend on each other. Burgundy modules are unreachable or have findings.
+            {NAV.catacombs.hint}. Tombstones are dead or suspicious modules; plain slabs are alive.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -131,9 +132,7 @@ export function GraphPage() {
       </div>
 
       {graph.nodes.length === 0 ? (
-        <p className="card px-5 py-8 text-center text-sm text-muted">
-          {mode === "suspicious" ? "No suspicious modules. Switch focus to see everything." : "No modules to draw."}
-        </p>
+        <EmptyState epitaph={mode === "suspicious" ? EPITAPHS.noSuspicious : "No modules to draw."} />
       ) : (
         <div className={selectedNode ? "grid gap-4 lg:grid-cols-[1fr_300px]" : ""}>
           <div>
@@ -147,11 +146,11 @@ export function GraphPage() {
               height="calc(100vh - 300px)"
             />
             <p className="mt-2 text-xs text-muted">
-              Click a module for its findings. Hover to light up its connections. Dashed borders mean tests only.
+              Click a module to examine it. Hover to light up its connections. Dashed borders mean undead: alive only in tests.
               {hiddenCount > 0 && (
                 <>
                   {" "}
-                  {hiddenCount} healthy modules hidden.{" "}
+                  {hiddenCount} living modules hidden.{" "}
                   <button className="underline" onClick={() => setFocusMode("all")}>
                     Show all
                   </button>
@@ -168,7 +167,7 @@ export function GraphPage() {
                   <div className="min-w-0">
                     <p className="break-all font-mono text-sm">{selectedNode.file}</p>
                     <p className="mt-1 text-xs text-muted">
-                      {selectedNode.liveness === "dead" ? "Unreachable module" : `Liveness: ${selectedNode.liveness.replace("_", " ")}`}
+                      {livenessLabel(selectedNode.liveness)}
                     </p>
                   </div>
                 </div>
@@ -176,7 +175,7 @@ export function GraphPage() {
                   {expanded.includes(selectedNode.id) ? "Collapse symbols" : "Expand symbols"}
                 </button>
                 <div>
-                  <p className="label mb-1.5">Findings in this file</p>
+                  <p className="label mb-1.5">Remains in this file</p>
                   {selectedFindings.length === 0 ? (
                     <p className="text-sm text-muted">None.</p>
                   ) : (

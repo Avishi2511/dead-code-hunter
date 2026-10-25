@@ -88,6 +88,28 @@ body {
     var(--surface);
 }
 
+/* Ground fog: a faint haze rising from the bottom edge of every page */
+body::after {
+  content: "";
+  position: fixed;
+  inset: auto 0 0 0;
+  height: 14rem;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(122, 30, 44, 0.07), transparent);
+  z-index: 0;
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Titles are set in a serif, like a case file; data stays monospaced */
+.title {
+  font-family: "Newsreader", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
 .bar-track {
   @apply h-1.5 overflow-hidden rounded-full bg-surface-2;
 }

@@ -9,7 +9,9 @@ import { GithubMark } from "@/components/Brand";
 import { ErrorBox, PageTitle } from "@/components/Shell";
 import { repoLabel, shortSha } from "@/lib/format";
 import { STAGES, stageStates } from "@/lib/stages";
+import { NAV } from "@/lib/lexicon";
 import { relativeTime } from "@/lib/time";
+import { JourneyBar } from "@/components/JourneyBar";
 import { useScanSelection } from "@/state/selection";
 
 export function useScanContext(): ScanView {
@@ -70,10 +72,10 @@ export function ScanLayout() {
   if (scan.status !== "done") return <Progress scan={scan} />;
 
   const tabs = [
-    { to: "", label: "Overview", icon: Skull, end: true },
-    { to: "findings", label: "Findings", icon: Search },
-    { to: "graph", label: "Code Graph", icon: Network },
-    { to: "cleanup", label: `Cleanup${selected ? ` (${selected})` : ""}`, icon: Scissors },
+    { to: "", label: NAV.graveyard.label, icon: Skull, end: true },
+    { to: "findings", label: NAV.remains.label, icon: Search },
+    { to: "graph", label: NAV.catacombs.label, icon: Network },
+    { to: "cleanup", label: `${NAV.burial.label}${selected ? ` (${selected})` : ""}`, icon: Scissors },
   ];
 
   return (
@@ -99,6 +101,7 @@ export function ScanLayout() {
           Scan again
         </button>
       </header>
+      <JourneyBar scanId={id} />
       <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-border">
         {tabs.map(({ to, label, icon: Icon, end }) => (
           <NavLink
@@ -126,7 +129,8 @@ function Progress({ scan }: { scan: ScanView }) {
   const states = stageStates(scan.stage, scan.status);
   return (
     <div className="mx-auto max-w-lg pt-10">
-      <h1 className="text-xl font-semibold tracking-tight">Hunting through {repoLabel(scan.repo_url)}…</h1>
+      <h1 className="title text-3xl">Surveying {repoLabel(scan.repo_url)}…</h1>
+      <p className="mt-1 text-sm text-muted">Nothing here is executed. We only read.</p>
       <div className="mt-6 h-1.5 overflow-hidden rounded bg-surface-2">
         <div className="h-full bg-accent transition-all duration-500" style={{ width: `${Math.max(scan.progress, 3)}%` }} />
       </div>

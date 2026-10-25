@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import type { Level } from "@/api/client";
-import { LEVEL_LABELS, typeLabel } from "@/lib/format";
+import { typeLabel } from "@/lib/format";
+import { verdict } from "@/lib/lexicon";
 
 export function LevelBadge({ level, confidence }: { level: Level; confidence?: number }) {
   return (
@@ -13,7 +14,7 @@ export function LevelBadge({ level, confidence }: { level: Level; confidence?: n
       )}
     >
       {confidence !== undefined && <span>{confidence}%</span>}
-      <span className="uppercase tracking-wide">{LEVEL_LABELS[level]}</span>
+      <span className="tracking-wide">{verdict(level)}</span>
     </span>
   );
 }

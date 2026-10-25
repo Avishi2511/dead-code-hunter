@@ -51,7 +51,9 @@ function DchNodeView({ data }: NodeProps<DchNode>) {
   return (
     <div
       className={clsx(
-        "flex h-full w-full flex-col justify-center rounded-xl border px-3 text-[14px] transition-opacity",
+        "flex h-full w-full flex-col justify-center border px-3 text-[14px] transition-opacity",
+        // Living modules are plain slabs; dead and suspicious ones are tombstones.
+        dead || data.selected ? "rounded-b-md rounded-t-[26px]" : "rounded-md",
         data.selected
           ? "border-accent-hover bg-accent text-text"
           : dead
@@ -277,8 +279,8 @@ export function GraphCanvas({
       )}
       {showLegend && positions !== null && (
         <div className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-4 rounded-md border border-border bg-bg/85 px-3 py-1.5 text-[11px] text-muted">
-          <Legend className="border-[#3b3435] bg-[#161314]" label="Healthy" />
-          <Legend className="border-accent-hover bg-accent-soft" label="Suspicious" />
+          <Legend className="rounded-sm border-[#3b3435] bg-[#161314]" label="Alive" />
+          <Legend className="rounded-t-full border-accent-hover bg-accent-soft" label="Dead or suspicious" />
           <Legend className="border-accent-hover bg-accent" label="Selected" />
         </div>
       )}
@@ -289,7 +291,7 @@ export function GraphCanvas({
 function Legend({ className, label }: { className: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className={clsx("h-2.5 w-2.5 rounded-full border", className)} />
+      <span className={clsx("h-3 w-2.5 border", className)} />
       {label}
     </span>
   );

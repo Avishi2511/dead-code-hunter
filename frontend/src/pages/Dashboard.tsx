@@ -4,6 +4,8 @@ import { useFindings } from "@/api/hooks";
 import { IconTile } from "@/components/Brand";
 import { typeLabel } from "@/lib/format";
 import { TILE_LABELS } from "@/lib/icons";
+import { EPITAPHS, NAV } from "@/lib/lexicon";
+import { PageTitle } from "@/components/Shell";
 import { useScanContext } from "./ScanLayout";
 
 const GRAVEYARD_SIZE = 6;
@@ -20,6 +22,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title={NAV.graveyard.label} subtitle={NAV.graveyard.hint} />
       {scan.warnings.length > 0 && (
         <section className="card flex gap-3 border-accent/50 p-4">
           <TriangleAlert size={18} className="mt-0.5 shrink-0 text-[#d98a96]" />
@@ -33,14 +36,12 @@ export function Dashboard() {
 
       <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="card p-5">
-          <p className="label">Codebase cleanup</p>
+          <p className="label">The grounds</p>
           <p className="mt-2 font-mono text-3xl">
-            {stats.python_files.toLocaleString()} <span className="text-base text-muted">files scanned</span>
+            {stats.python_files.toLocaleString()} <span className="text-base text-muted">files surveyed</span>
           </p>
           {byType.length === 0 ? (
-            <p className="mt-5 text-sm text-muted">
-              Nothing buried here. Either this project is tidy, or nothing was reachable enough to judge.
-            </p>
+            <p className="title mt-5 text-lg italic text-muted">{EPITAPHS.noRemains}</p>
           ) : (
             <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
               {byType.map(([type, count]) => (
@@ -61,7 +62,7 @@ export function Dashboard() {
         </div>
 
         <div className="card flex flex-col p-5">
-          <p className="label">Potential cleanup</p>
+          <p className="label">To lay to rest</p>
           <p className="mt-2 font-mono text-3xl">
             ~{lines.toLocaleString()} <span className="text-base text-muted">lines</span>
           </p>
@@ -80,15 +81,15 @@ export function Dashboard() {
       <section className="card">
         <div className="flex items-baseline justify-between border-b border-border px-5 py-4">
           <div>
-            <h2 className="label">The Graveyard</h2>
-            <p className="mt-1 text-xs text-muted">Highest confidence findings</p>
+            <h2 className="label">Certified dead</h2>
+            <p className="mt-1 text-xs text-muted">The remains we are most sure about</p>
           </div>
           <Link to="findings?level=high" className="flex items-center gap-1 text-xs text-muted hover:text-text">
-            View all {high ? `(${high.total})` : ""} <ArrowRight size={13} />
+            Examine all remains {high ? `(${high.total})` : ""} <ArrowRight size={13} />
           </Link>
         </div>
         {graveyard.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-muted">Nothing buried with high confidence.</p>
+          <p className="title px-5 py-6 text-lg italic text-muted">Nobody is certifiably dead. Check the rest of the remains.</p>
         ) : (
           <ul className="divide-y divide-border">
             {graveyard.map((finding) => (

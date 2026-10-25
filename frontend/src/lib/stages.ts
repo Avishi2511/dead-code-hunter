@@ -6,11 +6,11 @@ export interface Stage {
 }
 
 export const STAGES: Stage[] = [
-  { key: "downloading", label: "Downloading", apiStages: ["queued", "downloading"] },
-  { key: "parsing", label: "Parsing & building graph", apiStages: ["parsing"] },
-  { key: "analyzing", label: "Analyzing", apiStages: ["analyzing"] },
-  { key: "verifying", label: "Verifying", apiStages: ["verifying", "scoring"] },
-  { key: "suggestions", label: "Preparing suggestions", apiStages: ["suggestions", "done"] },
+  { key: "downloading", label: "Surveying the grounds", apiStages: ["queued", "downloading"] },
+  { key: "parsing", label: "Digging in and mapping the graves", apiStages: ["parsing"] },
+  { key: "analyzing", label: "Examining the remains", apiStages: ["analyzing"] },
+  { key: "verifying", label: "Checking for a pulse", apiStages: ["verifying", "scoring"] },
+  { key: "suggestions", label: "Writing the death certificates", apiStages: ["suggestions", "done"] },
 ];
 
 export type StageState = "done" | "active" | "todo";

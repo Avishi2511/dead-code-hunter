@@ -30,9 +30,9 @@ const DEMO_REPOS: DemoRepo[] = [
 ];
 
 const STEPS = [
-  ["Download", "A read-only snapshot of the repository. Nothing is installed or executed."],
-  ["Map", "Every module, symbol, route and dependency becomes a node in a code graph."],
-  ["Bury", "Whatever nothing reaches is marked dead, with the evidence for and against."],
+  ["Survey", "A read-only snapshot of the repository. Nothing is installed or executed."],
+  ["Examine", "Every module, route and dependency is mapped, then checked for a pulse."],
+  ["Bury", "What nothing reaches is marked dead, with the evidence, and removed by a patch you review."],
 ];
 
 export function Home() {
@@ -58,9 +58,9 @@ export function Home() {
       <section className="hero relative overflow-hidden rounded-xl border border-border px-6 pb-28 pt-12 sm:px-10">
         <Ruins className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full text-bg" />
         <p className="font-mono text-xs uppercase tracking-[0.25em] text-[#d98a96]">Code archaeology</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">{greeting()}</h1>
+        <h1 className="title mt-3 text-4xl sm:text-6xl">{greeting()}</h1>
         <p className="mt-3 max-w-xl text-lg text-muted">
-          Let's find what's buried in your codebase: the functions, routes and packages nobody calls anymore.
+          Every codebase has a graveyard: the functions, routes and packages nobody calls anymore. Let's find yours, examine the remains, and lay them to rest.
         </p>
       </section>
 

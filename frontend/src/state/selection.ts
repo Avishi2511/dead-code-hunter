@@ -6,6 +6,9 @@ type PerScan = Record<string, Action>;
 
 interface SelectionState {
   byScan: Record<string, PerScan>;
+  /** Scans whose patch the user has confirmed and taken: the last step of the journey. */
+  buried: Record<string, boolean>;
+  markBuried: (scanId: string) => void;
   set: (scanId: string, findingId: string, action: Action | null) => void;
   setMany: (scanId: string, findingIds: string[], action: Action) => void;
   clear: (scanId: string) => void;
@@ -15,6 +18,8 @@ export const useSelection = create<SelectionState>()(
   persist(
     (set) => ({
       byScan: {},
+      buried: {},
+      markBuried: (scanId) => set((state) => ({ buried: { ...state.buried, [scanId]: true } })),
       set: (scanId, findingId, action) =>
         set((state) => {
           const current = { ...(state.byScan[scanId] ?? {}) };

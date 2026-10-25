@@ -11,6 +11,7 @@ import { DiffView } from "@/components/DiffView";
 import { GraphCanvas } from "@/components/GraphCanvas";
 import { ErrorBox } from "@/components/Shell";
 import { typeLabel } from "@/lib/format";
+import { EPITAPHS, NAV, verdict } from "@/lib/lexicon";
 import { useScanSelection, useSelection } from "@/state/selection";
 import { useScanContext } from "./ScanLayout";
 
@@ -33,8 +34,8 @@ function FindingView({ scanId, finding }: { scanId: string; finding: FindingDeta
   const share = scan.stats.python_lines > 0 ? (finding.impact_lines / scan.stats.python_lines) * 100 : 0;
   const tabs: { key: Tab; label: string; hidden?: boolean }[] = [
     { key: "code", label: "Code", hidden: !finding.excerpt },
-    { key: "references", label: `References (${references.length})` },
-    { key: "graph", label: "Graph", hidden: finding.node_ids.length === 0 },
+    { key: "references", label: `Mourners (${references.filter((r) => r.direction === "incoming").length})` },
+    { key: "graph", label: "Catacombs", hidden: finding.node_ids.length === 0 },
   ];
   const visibleTabs = tabs.filter((t) => !t.hidden);
   const active = visibleTabs.some((t) => t.key === tab) ? tab : (visibleTabs[0]?.key ?? "references");
@@ -43,7 +44,7 @@ function FindingView({ scanId, finding }: { scanId: string; finding: FindingDeta
     <div className="space-y-6">
       <nav className="flex items-center gap-1.5 text-xs text-muted">
         <Link to=".." relative="path" className="hover:text-text">
-          Findings
+          {NAV.remains.label}
         </Link>
         <ChevronRight size={13} />
         <span className="truncate font-mono text-text">{finding.name}</span>
@@ -52,6 +53,7 @@ function FindingView({ scanId, finding }: { scanId: string; finding: FindingDeta
       <header className="flex flex-wrap items-start gap-4">
         <IconTile type={finding.type} size="lg" />
         <div className="min-w-0 flex-1">
+          <p className="label mb-1">Case file</p>
           <h1 className="break-all font-mono text-2xl font-semibold tracking-tight">{finding.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className="rounded-md border border-accent/70 bg-accent-soft px-2 py-0.5 text-xs text-[#e3a0aa]">
@@ -65,7 +67,7 @@ function FindingView({ scanId, finding }: { scanId: string; finding: FindingDeta
         </div>
         <div className="text-right">
           <div className="font-mono text-3xl text-[#d98a96]">{finding.confidence}%</div>
-          <div className="text-xs uppercase tracking-wider text-muted">{finding.level} confidence</div>
+          <div className="title text-sm italic text-muted">{verdict(finding.level)}</div>
         </div>
       </header>
       {finding.type === "unused_route" && (
@@ -74,31 +76,21 @@ function FindingView({ scanId, finding }: { scanId: string; finding: FindingDeta
 
       <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold">Why we think this is dead</h2>
+          <h2 className="title text-xl">Cause of death</h2>
+          <p className="mb-3 text-xs text-muted">Why we think this is dead</p>
           {evidence.length === 0 ? (
             <p className="text-sm text-muted">{finding.summary || "No detailed evidence recorded."}</p>
           ) : (
-            <ul className="space-y-2.5">
-              {[...evidence.filter((e) => e.polarity === "supports"), ...evidence.filter((e) => e.polarity === "weakens")].map(
-                (item, index) => (
-                  <li key={`${item.code}-${index}`} className="flex gap-2.5 text-sm">
-                    {item.polarity === "supports" ? (
-                      <Check size={16} className="mt-0.5 shrink-0 text-text" />
-                    ) : (
-                      <TriangleAlert size={16} className="mt-0.5 shrink-0 text-[#d98a96]" />
-                    )}
-                    <span className={item.polarity === "weakens" ? "text-muted" : ""}>
-                      {item.text}
-                      {(item.locations ?? []).length > 0 && (
-                        <span className="mt-0.5 block font-mono text-xs text-muted">
-                          {(item.locations ?? []).slice(0, 3).map((l) => `${l.file}:${l.line}`).join("  ·  ")}
-                        </span>
-                      )}
-                    </span>
-                  </li>
-                ),
+            <>
+              <EvidenceList items={evidence.filter((e) => e.polarity === "supports")} />
+              {evidence.some((e) => e.polarity === "weakens") && (
+                <div className="mt-5 border-t border-border pt-4">
+                  <h3 className="title text-lg">Signs of life</h3>
+                  <p className="mb-3 text-xs text-muted">Reasons it might not be dead after all</p>
+                  <EvidenceList items={evidence.filter((e) => e.polarity === "weakens")} />
+                </div>
               )}
-            </ul>
+            </>
           )}
         </div>
 
@@ -135,7 +127,8 @@ function FindingView({ scanId, finding }: { scanId: string; finding: FindingDeta
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold">Suggested change</h2>
+        <h2 className="title mb-1 text-xl">Suggested burial</h2>
+        <p className="mb-3 text-xs text-muted">The change that removes it</p>
         {suggestion ? (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +142,7 @@ function FindingView({ scanId, finding }: { scanId: string; finding: FindingDeta
             </div>
             {(suggestion.cascades ?? []).length > 0 && (
               <div className="text-sm">
-                <p className="label mb-1">Also removed</p>
+                <p className="label mb-1">Buried alongside</p>
                 <ul className="list-disc space-y-0.5 pl-5 text-muted">
                   {(suggestion.cascades ?? []).map((c) => (
                     <li key={c}>{c}</li>
@@ -174,10 +167,34 @@ function FindingView({ scanId, finding }: { scanId: string; finding: FindingDeta
   );
 }
 
+function EvidenceList({ items }: { items: NonNullable<FindingDetail["evidence"]> }) {
+  return (
+    <ul className="space-y-2.5">
+      {items.map((item, index) => (
+        <li key={`${item.code}-${index}`} className="flex gap-2.5 text-sm">
+          {item.polarity === "supports" ? (
+            <Check size={16} className="mt-0.5 shrink-0 text-text" />
+          ) : (
+            <TriangleAlert size={16} className="mt-0.5 shrink-0 text-[#d98a96]" />
+          )}
+          <span className={item.polarity === "weakens" ? "text-muted" : ""}>
+            {item.text}
+            {(item.locations ?? []).length > 0 && (
+              <span className="mt-0.5 block font-mono text-xs text-muted">
+                {(item.locations ?? []).slice(0, 3).map((l) => `${l.file}:${l.line}`).join("  ·  ")}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function References({ references }: { references: NonNullable<FindingDetail["references"]> }) {
   const groups = [
-    ["Incoming", references.filter((r) => r.direction === "incoming"), "No incoming references. Nothing calls this."],
-    ["Outgoing", references.filter((r) => r.direction === "outgoing"), "Nothing outgoing."],
+    ["Mourners", references.filter((r) => r.direction === "incoming"), EPITAPHS.noMourners],
+    ["Last ties", references.filter((r) => r.direction === "outgoing"), EPITAPHS.noTies],
   ] as const;
   return (
     <div className="grid gap-3 md:grid-cols-2">
@@ -185,7 +202,7 @@ function References({ references }: { references: NonNullable<FindingDetail["ref
         <div key={title} className="card p-4">
           <p className="label mb-2">{title}</p>
           {list.length === 0 ? (
-            <p className="text-sm text-muted">{empty}</p>
+            <p className="title text-base italic text-muted">{empty}</p>
           ) : (
             <ul className="space-y-1.5 text-sm">
               {list.map((ref, index) => (
@@ -230,7 +247,7 @@ function Actions({ scanId, finding }: { scanId: string; finding: FindingDetail }
       {current && (
         <p className="flex items-center gap-1.5 text-xs text-muted">
           <ShieldCheck size={14} />
-          In cleanup: {current === "remove" ? "remove" : "mark as safe"}
+          {current === "remove" ? "Marked for burial" : "Spared"}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -238,18 +255,18 @@ function Actions({ scanId, finding }: { scanId: string; finding: FindingDetail }
           className={clsx("btn", current === "mark_alive" && "border-accent")}
           onClick={() => set(scanId, finding.id, current === "mark_alive" ? null : "mark_alive")}
         >
-          Mark as safe
+          Spare it
         </button>
         <button
           className="btn btn-primary"
           disabled={blocked}
           onClick={() => set(scanId, finding.id, current === "remove" ? null : "remove")}
         >
-          {current === "remove" ? "Remove from cleanup" : "Add to cleanup"}
+          {current === "remove" ? "Unmark" : "Bury"}
         </button>
       </div>
       <Link to="../../cleanup" relative="path" className="block text-xs text-muted underline">
-        Go to cleanup
+        To the burial
       </Link>
     </div>
   );

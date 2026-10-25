@@ -6,18 +6,19 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, patchUrl, reportUrl, type Action, type CleanupView } from "@/api/client";
 import { useCleanup, useFindings } from "@/api/hooks";
-import { IconTile } from "@/components/Brand";
+import { EmptyState, IconTile } from "@/components/Brand";
 import { DiffView } from "@/components/DiffView";
 import { ErrorBox, PageTitle } from "@/components/Shell";
 import { diffFileName, fileStats, parseUnifiedDiff, splitDiffByFile } from "@/lib/diff";
 import { pluralize, typeLabel } from "@/lib/format";
 import { TILE_LABELS } from "@/lib/icons";
+import { EPITAPHS, NAV } from "@/lib/lexicon";
 import { useScanSelection, useSelection } from "@/state/selection";
 
 export function CleanupPage() {
   const { id = "" } = useParams();
   const selection = useScanSelection(id);
-  const { set, clear } = useSelection.getState();
+  const { set, clear, markBuried } = useSelection.getState();
   const [cleanupId, setCleanupId] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -57,8 +58,8 @@ export function CleanupPage() {
   if (cleanupId && result?.status === "failed") {
     return (
       <>
-        <PageTitle title="Cleanup" />
-        <ErrorBox message={result.error ?? "The cleanup failed."} onRetry={retry} />
+        <PageTitle title={NAV.burial.label} />
+        <ErrorBox message={result.error ?? "The burial failed."} onRetry={retry} />
         <button className="btn mt-4" onClick={backToSelection}>
           <ArrowLeft size={15} /> Back to selection
         </button>
@@ -74,7 +75,10 @@ export function CleanupPage() {
         result={result}
         grouped={grouped}
         onBack={backToSelection}
-        onConfirm={() => setConfirmed(true)}
+        onConfirm={() => {
+          markBuried(id);
+          setConfirmed(true);
+        }}
       />
     );
   }
@@ -82,8 +86,8 @@ export function CleanupPage() {
   if (cleanupId) {
     return (
       <>
-        <PageTitle title="Cleanup Plan" subtitle="Applying the changes to a copy and validating them…" />
-        <p className="text-sm text-muted">Working on it…</p>
+        <PageTitle title="Burial plan" subtitle="Applying the changes to a copy and checking for a pulse…" />
+        <p className="title text-lg italic text-muted">Digging…</p>
       </>
     );
   }
@@ -91,27 +95,26 @@ export function CleanupPage() {
   if (ids.length === 0) {
     return (
       <>
-        <PageTitle title="Cleanup" />
-        <div className="card px-5 py-10 text-center">
-          <p className="text-sm text-muted">Nothing selected yet.</p>
-          <Link to="../findings" relative="path" className="btn btn-primary mt-4 inline-flex">
-            Pick findings
+        <PageTitle title={NAV.burial.label} subtitle={NAV.burial.hint} />
+        <EmptyState epitaph={EPITAPHS.nothingMarked}>
+          <Link to="../findings" relative="path" className="btn btn-primary inline-flex">
+            Examine the remains
           </Link>
-          <p className="mt-3 text-xs text-muted">"Select all High" on the findings page is a good start.</p>
-        </div>
+          <p className="mt-3 text-xs text-muted">"Select all certified dead" is a good start.</p>
+        </EmptyState>
       </>
     );
   }
 
   return (
     <>
-      <PageTitle title="Cleanup" subtitle="Review what you selected, then preview the changes.">
+      <PageTitle title={NAV.burial.label} subtitle="Review what you marked, then preview the burial.">
         <div className="flex gap-2">
           <button className="btn" onClick={() => clear(id)}>
             Clear selection
           </button>
           <button className="btn btn-primary" onClick={() => prepare.mutate()} disabled={prepare.isPending}>
-            {prepare.isPending ? "Preparing…" : "Preview & validate"}
+            {prepare.isPending ? "Digging…" : "Preview the burial"}
           </button>
         </div>
       </PageTitle>
@@ -185,7 +188,7 @@ function Plan({
 
   return (
     <div className="space-y-6">
-      <PageTitle title="Cleanup Plan" subtitle="Review the proposed changes before applying them.">
+      <PageTitle title="Burial plan" subtitle="Review the proposed changes before applying them.">
         <div className="flex gap-2">
           <button className="btn" onClick={onBack}>
             <ArrowLeft size={15} /> Back
@@ -196,7 +199,7 @@ function Plan({
 
       <section className="card grid gap-4 p-5 sm:grid-cols-[1fr_auto]">
         <div>
-          <p className="label">{pluralize(summary.findings, "finding")} selected</p>
+          <p className="label">{pluralize(summary.findings, "finding")} marked for burial</p>
           <div className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
             {grouped.map(([type, group]) => (
               <div key={type} className="flex items-center gap-3">
@@ -340,17 +343,17 @@ function Ready({ result, cleanupId }: { result: CleanupView; cleanupId: string }
           {failed ? <TriangleAlert size={26} /> : <CircleCheck size={28} />}
         </span>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">{failed ? "Cleanup needs review" : "Cleanup Ready"}</h1>
+          <h1 className="title text-3xl">{failed ? "Burial postponed" : "Rest in peace"}</h1>
           <p className="mt-1 text-sm text-muted">
             {failed
               ? "Some checks found new problems. Read them below before applying anything."
-              : "Your changes were checked statically and are ready to apply. Nothing in your repository has been touched."}
+              : "The remains are ready to be laid to rest. Your changes were checked statically, and nothing in your repository has been touched."}
           </p>
         </div>
       </div>
 
       <section className="card grid grid-cols-3 gap-4 p-5">
-        <Figure label="Findings selected" value={summary.findings} />
+        <Figure label="Laid to rest" value={summary.findings} />
         <Figure label="Files affected" value={summary.files_changed} />
         <Figure label="Lines removed" value={summary.lines_removed} />
       </section>
@@ -362,7 +365,7 @@ function Ready({ result, cleanupId }: { result: CleanupView; cleanupId: string }
           <ul className="space-y-3">
             <Step
               icon={GitMerge}
-              title="Apply changes locally"
+              title="Apply the burial locally"
               text="Run from the root of your clone; the patch is also valid for git am."
               badge={failed ? undefined : "Recommended"}
               action={<CopyButton text={command} label="Copy command" />}
@@ -370,8 +373,8 @@ function Ready({ result, cleanupId }: { result: CleanupView; cleanupId: string }
             />
             <Step
               icon={Download}
-              title="Download patch"
-              text="Get the .patch file and apply it yourself."
+              title="Death certificate (.patch)"
+              text="Download the patch and apply it yourself."
               action={
                 <a className="btn" href={patchUrl(cleanupId)} download>
                   Download
@@ -380,8 +383,8 @@ function Ready({ result, cleanupId }: { result: CleanupView; cleanupId: string }
             />
             <Step
               icon={FileText}
-              title="Download cleanup report"
-              text="What was removed, the evidence, and validation results."
+              title="Autopsy report"
+              text="What was removed, the evidence, and the validation results."
               action={
                 <a className="btn" href={reportUrl(cleanupId)} download>
                   Download
@@ -457,7 +460,7 @@ function ConfirmDialog({ onConfirm, failed }: { onConfirm: () => void; failed: b
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70" />
         <Dialog.Content className="card fixed left-1/2 top-1/2 w-[min(92vw,28rem)] -translate-x-1/2 -translate-y-1/2 p-6">
-          <Dialog.Title className="text-lg font-semibold">Before you apply this</Dialog.Title>
+          <Dialog.Title className="title text-2xl">Before the burial</Dialog.Title>
           <Dialog.Description className="mt-2 text-sm text-muted">
             These changes come from static analysis. Nothing has been changed in your repository, and the patch is yours
             to review and apply.
