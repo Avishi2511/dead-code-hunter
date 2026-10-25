@@ -5,24 +5,26 @@ import { verdict } from "@/lib/lexicon";
 
 export function LevelBadge({ level, confidence }: { level: Level; confidence?: number }) {
   return (
-    <span
-      className={clsx(
-        "inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 font-mono text-xs",
-        level === "high" && "border-accent bg-accent-soft text-text",
-        level === "medium" && "border-accent/60 text-text",
-        level === "low" && "border-border text-muted",
-      )}
-    >
+    <span className={clsx("chip", `chip-${level}`)}>
       {confidence !== undefined && <span>{confidence}%</span>}
-      <span className="tracking-wide">{verdict(level)}</span>
+      <span>{verdict(level)}</span>
     </span>
   );
 }
 
 export function TypeBadge({ type }: { type: string }) {
+  return <span className="chip chip-plain">{typeLabel(type)}</span>;
+}
+
+/** The confidence as a thin bar plus the number, the way the findings ledger shows it. */
+export function ConfidenceBar({ level, value }: { level: Level; value: number }) {
+  const color = { high: "#d98a96", medium: "#a8626d", low: "#7d6a6c" }[level];
   return (
-    <span className="rounded border border-border bg-surface-2 px-1.5 py-0.5 text-xs text-muted">
-      {typeLabel(type)}
+    <span className="flex items-center gap-2.5">
+      <span className="h-1 flex-1 overflow-hidden rounded bg-border">
+        <span className="block h-full" style={{ width: `${value}%`, background: color }} />
+      </span>
+      <span className="w-9 text-right font-mono text-[13px]">{value}%</span>
     </span>
   );
 }
@@ -36,15 +38,6 @@ const CHECK_LABELS: Record<string, string> = {
 export function StaticCheckBadge({ value }: { value: string | null | undefined }) {
   if (!value) return null;
   return (
-    <span
-      className={clsx(
-        "rounded border px-1.5 py-0.5 text-xs",
-        value === "pass" && "border-border text-muted",
-        value === "fail" && "border-accent text-text",
-        value === "skipped" && "border-border text-muted",
-      )}
-    >
-      {CHECK_LABELS[value] ?? value}
-    </span>
+    <span className={clsx("chip", value === "fail" ? "chip-high" : "chip-plain")}>{CHECK_LABELS[value] ?? value}</span>
   );
 }

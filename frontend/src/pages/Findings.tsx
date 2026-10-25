@@ -1,25 +1,15 @@
 import clsx from "clsx";
-import { Search } from "lucide-react";
+import { ArrowRight, ChevronRight, Search } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { FindingSummary } from "@/api/client";
+import type { FindingSummary, Level } from "@/api/client";
 import { useFindings } from "@/api/hooks";
+import { ConfidenceBar, LevelBadge } from "@/components/Badges";
 import { EmptyState, IconTile } from "@/components/Brand";
-import { EPITAPHS, NAV, verdict } from "@/lib/lexicon";
+import { Container, SectionHead } from "@/components/Shell";
 import { TYPE_LABELS, typeLabel } from "@/lib/format";
+import { EPITAPHS, VERDICTS } from "@/lib/lexicon";
 import { useScanSelection, useSelection } from "@/state/selection";
-
-const GROUPS: { key: string; label: string; types: string[] | null }[] = [
-  { key: "all", label: "All", types: null },
-  {
-    key: "unused",
-    label: "Unused",
-    types: ["unused_function", "unused_class", "unused_method", "unused_variable", "unused_import", "unused_module"],
-  },
-  { key: "unreachable", label: "Unreachable", types: ["unreachable_code"] },
-  { key: "dependencies", label: "Dependencies", types: ["unused_dependency"] },
-  { key: "apis", label: "APIs", types: ["unused_route"] },
-];
 
 type SortKey = "confidence" | "file" | "type" | "impact";
 const SORTERS: Record<SortKey, (a: FindingSummary, b: FindingSummary) => number> = {
@@ -29,11 +19,12 @@ const SORTERS: Record<SortKey, (a: FindingSummary, b: FindingSummary) => number>
   impact: (a, b) => b.impact_lines - a.impact_lines,
 };
 
+const LEVELS: Level[] = ["high", "medium", "low"];
+
 export function Findings() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
-  const group = search.get("group") ?? "all";
   const type = search.get("type") ?? "";
   const level = search.get("level") ?? "";
   const q = search.get("q") ?? "";
@@ -50,177 +41,162 @@ export function Findings() {
     setSearch(next, { replace: true });
   };
 
-  const all = data?.items ?? [];
-  const counts = useMemo(
-    () => Object.fromEntries(GROUPS.map((g) => [g.key, all.filter((f) => !g.types || g.types.includes(f.type)).length])),
-    [all],
-  );
-  const groupTypes = GROUPS.find((g) => g.key === group)?.types ?? null;
+  const all = useMemo(() => data?.items ?? [], [data]);
   const needle = q.toLowerCase();
-  const items = useMemo(
+  // Counts on the verdict pills follow the other filters, so they always add up to what the list can show.
+  const scoped = useMemo(
     () =>
-      all
-        .filter(
-          (f) =>
-            (!groupTypes || groupTypes.includes(f.type)) &&
-            (!type || f.type === type) &&
-            (!level || f.level === level) &&
-            (!needle || f.name.toLowerCase().includes(needle) || f.file.toLowerCase().includes(needle)),
-        )
-        .sort(SORTERS[sort]),
-    [all, groupTypes, type, level, needle, sort],
+      all.filter(
+        (f) =>
+          (!type || f.type === type) &&
+          (!needle || f.name.toLowerCase().includes(needle) || f.file.toLowerCase().includes(needle)),
+      ),
+    [all, type, needle],
   );
-  const selectable = useMemo(() => items.filter((f) => !f.covered_by && !f.manual), [items]);
-  const allChecked = selectable.length > 0 && selectable.every((f) => f.id in selection);
+  const counts = useMemo(
+    () => Object.fromEntries(LEVELS.map((l) => [l, scoped.filter((f) => f.level === l).length])) as Record<Level, number>,
+    [scoped],
+  );
+  const items = useMemo(() => scoped.filter((f) => !level || f.level === level).sort(SORTERS[sort]), [scoped, level, sort]);
+
+  const byId = useMemo(() => new Map(all.map((f) => [f.id, f])), [all]);
   const selectedCount = Object.keys(selection).length;
-  const highIds = selectable.filter((f) => f.level === "high").map((f) => f.id);
+  const selectedLines = Object.keys(selection).reduce((sum, key) => sum + (byId.get(key)?.impact_lines ?? 0), 0);
+  const highIds = useMemo(() => all.filter((f) => f.level === "high" && !f.covered_by && !f.manual).map((f) => f.id), [all]);
+
+  const pills: { key: string; label: string; count: number }[] = [
+    { key: "", label: "All", count: scoped.length },
+    ...LEVELS.map((l) => ({ key: l, label: VERDICTS[l], count: counts[l] })),
+  ];
 
   return (
-    <div className={selectedCount > 0 ? "pb-20" : ""}>
-      <div className="mb-1 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="title text-3xl">{NAV.remains.label}</h1>
-          <p className="mt-1 text-sm text-muted">
-            {counts.all ?? 0} findings · {NAV.remains.hint.toLowerCase()}
-          </p>
-        </div>
-        <button className="btn" onClick={() => setMany(id, highIds, "remove")} disabled={highIds.length === 0}>
-          Select all certified dead ({highIds.length})
-        </button>
-      </div>
+    <>
+      <Container className="pt-14">
+        <SectionHead eyebrow="The remains">
+          Decide who rests, <em>and who is spared.</em>
+        </SectionHead>
 
-      <div className="mb-4 mt-4 flex flex-wrap gap-2">
-        {GROUPS.map((g) => (
-          <button
-            key={g.key}
-            onClick={() => setParam("group", g.key === "all" ? "" : g.key)}
-            className={clsx(
-              "rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-              group === g.key ? "border-accent bg-accent text-text" : "border-border text-muted hover:text-text",
-            )}
-          >
-            {g.label} <span className="font-mono text-xs opacity-80">({counts[g.key] ?? 0})</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
-        <div className="relative">
-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input className="input !pl-9" placeholder="Search the remains…" value={q} onChange={(e) => setParam("q", e.target.value)} />
-        </div>
-        <select className="input !w-auto" value={type} onChange={(e) => setParam("type", e.target.value)} aria-label="Type">
-          <option value="">Any type</option>
-          {Object.entries(TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select className="input !w-auto" value={level} onChange={(e) => setParam("level", e.target.value)} aria-label="Verdict">
-          <option value="">Any verdict</option>
-          <option value="high">Certified dead</option>
-          <option value="medium">Probably dead</option>
-          <option value="low">Might still twitch</option>
-        </select>
-        <select className="input !w-auto" value={sort} onChange={(e) => setParam("sort", e.target.value)} aria-label="Sort">
-          <option value="confidence">Sort: Confidence</option>
-          <option value="file">Sort: File</option>
-          <option value="type">Sort: Type</option>
-          <option value="impact">Sort: Impact</option>
-        </select>
-      </div>
-
-      {error && <p className="text-sm">{error.message}</p>}
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {data &&
-        (items.length === 0 ? (
-          <EmptyState epitaph={(counts.all ?? 0) === 0 ? EPITAPHS.noRemains : EPITAPHS.noMatches} />
-        ) : (
-          <div className="card overflow-hidden">
-            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-4 py-2.5 text-xs text-muted md:grid-cols-[auto_1.6fr_1fr_1.6fr_7rem]">
+        <div className="mt-9 flex flex-wrap items-center justify-between gap-x-6 gap-y-3.5">
+          <div role="group" aria-label="Filter by verdict" className="flex flex-wrap gap-2">
+            {pills.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                aria-pressed={level === p.key}
+                onClick={() => setParam("level", p.key)}
+                className={clsx("pill !px-4 !py-2 !text-[13px]", level === p.key && "pill-on")}
+              >
+                {p.label} <span className="font-mono text-[11.5px]">{p.count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-[1_1_320px] flex-wrap justify-end gap-3">
+            <div className="relative max-w-[340px] flex-[1_1_220px]">
+              <Search size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
               <input
-                type="checkbox"
-                className="h-4 w-4 accent-[#7a1e2c]"
-                aria-label="Select all shown"
-                checked={allChecked}
-                onChange={(e) =>
-                  e.target.checked ? setMany(id, selectable.map((f) => f.id), "remove") : selectable.forEach((f) => set(id, f.id, null))
-                }
+                className="input !py-2.5 !pl-10 font-mono"
+                placeholder="Search symbols or paths"
+                aria-label="Search remains"
+                value={q}
+                onChange={(e) => setParam("q", e.target.value)}
               />
-              <span>Name</span>
-              <span className="hidden md:block">Type</span>
-              <span className="hidden md:block">File</span>
-              <span className="text-right">Verdict</span>
             </div>
-            <ul className="divide-y divide-border">
+            <select className="btn !appearance-none !bg-bg" value={type} onChange={(e) => setParam("type", e.target.value)} aria-label="Type">
+              <option value="">Any kind</option>
+              {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select className="btn !appearance-none !bg-bg" value={sort} onChange={(e) => setParam("sort", e.target.value)} aria-label="Sort">
+              <option value="confidence">Sort: confidence</option>
+              <option value="file">Sort: file</option>
+              <option value="type">Sort: kind</option>
+              <option value="impact">Sort: impact</option>
+            </select>
+            <button className="btn" onClick={() => setMany(id, highIds, "remove")} disabled={highIds.length === 0}>
+              Mark all certified dead ({highIds.length})
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="mt-6 text-sm">{error.message}</p>}
+        {isLoading && <p className="mt-6 text-sm text-muted">Loading…</p>}
+        {data &&
+          (items.length === 0 ? (
+            <div className="mt-5">
+              <EmptyState epitaph={all.length === 0 ? EPITAPHS.noRemains : EPITAPHS.noMatches} />
+            </div>
+          ) : (
+            <div className="mt-5 overflow-hidden rounded-[20px] border border-border bg-surface">
               {items.map((f) => {
                 const disabled = Boolean(f.covered_by) || f.manual;
+                const marked = f.id in selection;
                 return (
-                  <li
+                  <div
                     key={f.id}
                     className={clsx(
-                      "grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-2 md:grid-cols-[auto_1.6fr_1fr_1.6fr_7rem]",
-                      f.id in selection && "bg-accent-soft/40",
+                      "flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[#231e1f] px-6 py-4 transition-colors first:border-t-0 hover:bg-[#181415]",
+                      marked && "bg-accent/10",
                       disabled && "opacity-60",
                     )}
                   >
                     <input
                       type="checkbox"
-                      className="h-4 w-4 accent-[#7a1e2c]"
-                      aria-label={`Select ${f.name}`}
+                      className="h-5 w-5 cursor-pointer accent-rose disabled:cursor-not-allowed"
+                      aria-label={`Bury ${f.name}`}
                       disabled={disabled}
-                      checked={f.id in selection}
+                      checked={marked}
                       onChange={(e) => set(id, f.id, e.target.checked ? "remove" : null)}
                     />
-                    <Link to={encodeURIComponent(f.id)} className="flex min-w-0 items-center gap-3">
-                      <IconTile type={f.type} size="sm" />
-                      <span className="min-w-0">
-                        <span className="block truncate font-mono text-sm hover:underline">{f.name}</span>
-                        {(f.covered_by || f.manual) && (
-                          <span className="block text-xs text-muted">{f.covered_by ? "covered by another finding" : "manual change"}</span>
-                        )}
-                      </span>
+                    <IconTile type={f.type} size="md" />
+                    <Link to={encodeURIComponent(f.id)} className="min-w-0 flex-[1_1_240px]">
+                      <div className="break-words font-mono text-[15px] font-medium [overflow-wrap:anywhere]">{f.name}</div>
+                      <div className="mt-0.5 font-mono text-xs text-muted [overflow-wrap:anywhere]">
+                        {typeLabel(f.type)} · {f.file}:{f.line}
+                        {f.covered_by && " · covered by another finding"}
+                        {f.manual && " · manual change"}
+                      </div>
                     </Link>
-                    <span className="hidden text-sm text-muted md:block">{typeLabel(f.type)}</span>
-                    <span className="hidden truncate font-mono text-xs text-muted md:block">
-                      {f.file}:{f.line}
-                    </span>
-                    <span className="text-right leading-tight">
-                      <span
-                        className={clsx(
-                          "block font-mono text-sm",
-                          f.level === "high" ? "text-[#d98a96]" : f.level === "medium" ? "text-text" : "text-muted",
-                        )}
-                      >
-                        {f.confidence}%
-                      </span>
-                      <span className="hidden text-[11px] text-muted sm:block">{verdict(f.level)}</span>
-                    </span>
-                  </li>
+                    <div className="w-[150px] shrink-0">
+                      <ConfidenceBar level={f.level} value={f.confidence} />
+                    </div>
+                    <div className="w-[150px] shrink-0 text-center">
+                      <LevelBadge level={f.level} />
+                    </div>
+                    <span className="w-[70px] shrink-0 text-right font-mono text-[12.5px] text-muted">{f.impact_lines} ln</span>
+                    <Link to={encodeURIComponent(f.id)} aria-label={`Open ${f.name}`} className="flex text-muted hover:text-text">
+                      <ChevronRight size={18} />
+                    </Link>
+                  </div>
                 );
               })}
-            </ul>
-          </div>
-        ))}
+            </div>
+          ))}
+      </Container>
 
       {selectedCount > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface/95 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3">
-            <span className="text-sm">
-              <span className="font-mono">{selectedCount}</span> marked for burial
-            </span>
-            <div className="flex gap-2">
-              <button className="btn" onClick={() => clear(id)}>
-                Clear
-              </button>
-              <button className="btn btn-primary" onClick={() => navigate("../cleanup")}>
-                Prepare the burial
-              </button>
+        <div className="sticky bottom-5 z-10 mt-7">
+          <Container>
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-[18px] border border-accent-hover bg-[#1b1112] py-3.5 pl-[26px] pr-4 shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+              <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5">
+                <span className="title text-[34px] leading-none text-rose">{selectedCount}</span>
+                <span className="text-[15px]">marked for burial</span>
+                <span className="font-mono text-[12.5px] text-soft">~{selectedLines.toLocaleString()} lines</span>
+              </div>
+              <div className="flex gap-2.5">
+                <button className="btn" onClick={() => clear(id)}>
+                  Clear
+                </button>
+                <button className="btn btn-primary btn-lg" onClick={() => navigate("../cleanup")}>
+                  Continue to Burial <ArrowRight size={18} />
+                </button>
+              </div>
             </div>
-          </div>
+          </Container>
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -5,11 +5,11 @@ import { typeIcon } from "@/lib/icons";
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={clsx("inline-flex items-center gap-2.5", className)}>
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-accent bg-accent-soft text-[#d98a96]">
+    <span className={clsx("inline-flex items-center gap-3", className)}>
+      <span className="flex h-[42px] w-[34px] items-center justify-center rounded-b-md rounded-t-[17px] border border-[#5a2630] bg-accent/[0.28] text-rose">
         <Skull size={18} strokeWidth={1.75} />
       </span>
-      <span className="font-mono text-[11px] font-medium leading-[1.15] tracking-[0.22em]">
+      <span className="font-mono text-xs font-semibold leading-[1.35] tracking-[0.24em]">
         DEAD CODE
         <br />
         HUNTER
@@ -39,14 +39,14 @@ export function IconTile({
   muted?: boolean;
 }) {
   const Icon = icon ?? typeIcon(type ?? "");
-  const box = { sm: "h-7 w-7", md: "h-9 w-9", lg: "h-12 w-12" }[size];
-  const glyph = { sm: 14, md: 17, lg: 24 }[size];
+  const box = { sm: "h-10 w-8", md: "h-12 w-10", lg: "h-[94px] w-[76px]" }[size];
+  const glyph = { sm: 16, md: 20, lg: 32 }[size];
   return (
     <span
       className={clsx(
         "flex shrink-0 items-center justify-center rounded-b-md rounded-t-full border",
         box,
-        muted ? "border-border bg-surface-2 text-muted" : "border-accent/70 bg-accent-soft text-[#d98a96]",
+        muted ? "border-border bg-surface-2 text-muted" : "border-[#4a2330] bg-accent-soft text-rose",
       )}
     >
       <Icon size={glyph} strokeWidth={1.75} />

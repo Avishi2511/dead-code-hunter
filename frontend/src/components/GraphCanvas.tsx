@@ -27,6 +27,7 @@ interface DchData extends Record<string, unknown> {
   title: string;
   kind: string;
   liveness: string;
+  suspicious: boolean;
   selected: boolean;
   dimmed: boolean;
   hidden: number;
@@ -39,9 +40,9 @@ type GroupNode = Node<{ label: string }, "group">;
 
 const NODE_HEIGHT = 48;
 const SYMBOL_ROW = 22;
-const EDGE_IDLE = "#4a4244";
-const EDGE_ACTIVE = "#a8a09c";
-const EDGE_DEAD = "#b84a5b";
+const EDGE_IDLE = "#4a4041";
+const EDGE_ACTIVE = "#d98a96";
+const EDGE_DEAD = "#d98a96";
 
 const isDead = (liveness: string) => liveness === "dead";
 
@@ -52,14 +53,16 @@ function DchNodeView({ data }: NodeProps<DchNode>) {
     <div
       className={clsx(
         "flex h-full w-full flex-col justify-center border px-3 text-[14px] transition-opacity",
-        // Living modules are plain slabs; dead and suspicious ones are tombstones.
-        dead || data.selected ? "rounded-b-md rounded-t-[26px]" : "rounded-md",
+        // Living modules are pills; dead and selected ones are tombstones.
+        dead || data.selected ? "rounded-b-md rounded-t-[26px]" : "rounded-[20px]",
         data.selected
-          ? "border-accent-hover bg-accent text-text"
+          ? "border-accent-hover bg-accent/40 text-text shadow-[0_0_0_4px_rgba(217,138,150,0.2),0_0_40px_rgba(184,57,74,0.35)]"
           : dead
-            ? "border-accent-hover/80 bg-accent-soft text-text shadow-[0_0_14px_rgba(122,30,44,0.35)]"
-            : "border-[#3b3435] bg-[#161314] text-[#c9c0bb]",
-        data.liveness === "test_only" && !data.selected && "border-dashed",
+            ? "border-accent-hover bg-accent/40 text-text"
+            : data.suspicious
+              ? "border-rose bg-surface text-text"
+              : "border-[#4a4041] bg-surface text-text",
+        (data.suspicious || data.liveness === "test_only") && !data.selected && !dead && "border-dashed",
         data.dimmed && "opacity-25",
       )}
     >
@@ -76,6 +79,7 @@ function DchNodeView({ data }: NodeProps<DchNode>) {
         <span className="min-w-0 flex-1 truncate font-mono" title={data.title}>
           {data.label}
         </span>
+        {data.suspicious && !data.selected && <span aria-hidden="true" className="h-[7px] w-[7px] shrink-0 rounded-full bg-rose" />}
         {data.hidden > 0 && <span className="shrink-0 text-[10px] opacity-70">+{data.hidden}</span>}
       </div>
       {data.note && <div className="mt-0.5 pl-9 text-[11px] italic text-[#e3a0aa]">{data.note}</div>}
@@ -115,6 +119,8 @@ export interface GraphCanvasProps {
   dimmed?: Set<string>;
   height?: number | string;
   showLegend?: boolean;
+  /** Drop the card frame, for a graph that fills its own band of the page. */
+  bare?: boolean;
   /** Draw relationship names on every edge instead of only on the highlighted ones. */
   labelAllEdges?: boolean;
 }
@@ -140,6 +146,7 @@ export function GraphCanvas({
   dimmed,
   height = 480,
   showLegend = true,
+  bare = false,
   labelAllEdges = false,
 }: GraphCanvasProps) {
   const [positions, setPositions] = useState<Record<string, Placement> | null>(null);
@@ -213,6 +220,7 @@ export function GraphCanvas({
         title: node.file ?? node.name,
         kind: node.kind,
         liveness: node.liveness,
+        suspicious: !isDead(node.liveness) && Number(node.attrs?.finding_count) > 0,
         selected: node.id === selectedId || (selectedId == null && focus.has(node.id)),
         dimmed: dimmed ? dimmed.has(node.id) : false,
         hidden: graph.hidden?.[node.id] ?? 0,
@@ -251,7 +259,7 @@ export function GraphCanvas({
   }, [graph, active, deadIds, labelAllEdges]);
 
   return (
-    <div className="card relative overflow-hidden" style={{ height }}>
+    <div className={clsx("relative overflow-hidden", bare ? "bg-transparent" : "rounded-[18px] border border-border bg-[#0d0a0b]")} style={{ height }}>
       {failed ? (
         <div className="flex h-full items-center justify-center text-sm text-muted">The graph could not be laid out.</div>
       ) : positions === null ? (
@@ -273,15 +281,15 @@ export function GraphCanvas({
           onNodeMouseEnter={(_, node) => node.type === "dch" && setHovered(node.id)}
           onNodeMouseLeave={() => setHovered(null)}
         >
-          <Background color="#231f20" gap={28} />
+          <Background color="rgba(237,230,225,0.09)" gap={28} size={1.4} />
           <Controls showInteractive={false} />
         </ReactFlow>
       )}
       {showLegend && positions !== null && (
         <div className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-4 rounded-md border border-border bg-bg/85 px-3 py-1.5 text-[11px] text-muted">
-          <Legend className="rounded-sm border-[#3b3435] bg-[#161314]" label="Alive" />
-          <Legend className="rounded-t-full border-accent-hover bg-accent-soft" label="Dead or suspicious" />
-          <Legend className="border-accent-hover bg-accent" label="Selected" />
+          <Legend className="rounded-full border-[#4a4041] bg-surface" label="Alive" />
+          <Legend className="rounded-full border-dashed border-rose bg-surface" label="Suspicious" />
+          <Legend className="rounded-b-sm rounded-t-full border-accent-hover bg-accent/40" label="Dead or selected" />
         </div>
       )}
     </div>

@@ -2,23 +2,34 @@
 export interface SampleFinding {
   type: string;
   name: string;
-  level: "high" | "medium";
+  path: string;
+  level: "high" | "medium" | "low";
   confidence: number;
 }
 
 export const SAMPLE_FINDINGS: SampleFinding[] = [
-  { type: "unused_dependency", name: "moment", level: "high", confidence: 99 },
-  { type: "unused_function", name: "legacy_user_lookup", level: "high", confidence: 94 },
-  { type: "unused_class", name: "LegacyTable", level: "high", confidence: 91 },
-  { type: "unused_route", name: "GET /api/legacy/users", level: "medium", confidence: 87 },
-  { type: "unused_import", name: "unused_import", level: "medium", confidence: 72 },
-  { type: "unreachable_code", name: "dead_branch", level: "medium", confidence: 68 },
+  { type: "unused_function", name: "send_welcome_email", path: "app/services/mailer.py", level: "high", confidence: 97 },
+  { type: "unused_class", name: "LegacyCache", path: "app/core/cache.py", level: "high", confidence: 94 },
+  { type: "unused_import", name: "pandas", path: "app/api/reports.py", level: "high", confidence: 99 },
+  { type: "unused_route", name: "GET /v1/export", path: "app/api/routes/export.py", level: "medium", confidence: 81 },
+  { type: "unused_dependency", name: "celery", path: "requirements.txt", level: "medium", confidence: 76 },
+  { type: "unused_module", name: "old_helpers.py", path: "app/utils/old_helpers.py", level: "low", confidence: 62 },
 ];
 
 export const TICK_MS = 420;
 export const CYCLE_TICKS = 32;
 /** The tick at which the scan is complete; reduced-motion visitors are shown this frame. */
 export const FINAL_TICK = 22;
+
+/** The five layers of a scan, shallowest first; the sample and the real progress screen use the same words. */
+export const STAGE_NAMES = [
+  "Surveying the grounds",
+  "Digging in and mapping the graves",
+  "Examining the remains",
+  "Checking for a pulse",
+  "Writing the death certificates",
+];
+export const STAGE_DEPTHS = ["0.0 m", "0.5 m", "2.0 m", "3.5 m", "5.0 m"];
 
 const STAGES: [number, string][] = [
   [0, "Surveying the grounds"],

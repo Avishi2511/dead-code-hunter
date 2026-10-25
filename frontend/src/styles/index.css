@@ -13,6 +13,23 @@
   --accent-hover: #93263a;
   --accent-soft: rgba(122, 30, 44, 0.22);
   --added-soft: rgba(110, 130, 120, 0.18);
+  --rose: #d98a96;
+  --text-soft: #b8aeaa;
+  --border-strong: #3a3031;
+  --ok: #8fa78c;
+  /* channel triples, so Tailwind can apply opacity modifiers (bg-accent/40) to the tokens */
+  --bg-rgb: 11 10 10;
+  --surface-rgb: 20 18 19;
+  --surface-2-rgb: 27 24 25;
+  --border-rgb: 42 37 38;
+  --text-rgb: 237 230 225;
+  --text-muted-rgb: 142 133 130;
+  --accent-rgb: 122 30 44;
+  --accent-hover-rgb: 147 38 58;
+  --rose-rgb: 217 138 150;
+  --text-soft-rgb: 184 174 170;
+  --border-strong-rgb: 58 48 49;
+  --ok-rgb: 143 167 140;
 }
 
 html,
@@ -27,25 +44,85 @@ body {
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-text transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-strong bg-transparent px-[18px] py-2.5 text-sm font-medium text-text transition-colors hover:border-rose hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply border-accent bg-accent hover:border-accent-hover hover:bg-accent-hover;
+    @apply border-accent-hover bg-accent font-semibold hover:border-accent-hover hover:bg-accent-hover;
+  }
+  .btn-lg {
+    @apply px-6 py-3.5 text-[15px];
   }
   .card {
-    @apply rounded-lg border border-border bg-surface;
+    @apply rounded-[18px] border border-border bg-surface;
   }
   .input {
-    @apply w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-none;
+    @apply w-full rounded-[10px] border border-[#2f292a] bg-bg px-4 py-3 text-sm text-text placeholder:text-muted focus:border-rose focus:outline-none;
   }
   .label {
-    @apply text-xs font-medium uppercase tracking-wider text-muted;
+    @apply font-mono text-[11px] uppercase tracking-[0.16em] text-muted;
+  }
+  /* mono, tracked, rose: the small heading above a section title */
+  .eyebrow {
+    @apply font-mono text-xs uppercase tracking-[0.3em] text-rose;
+  }
+  /* big serif headings; the <em> part is the italic rose accent */
+  .display {
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    text-wrap: balance;
+  }
+  .display em {
+    color: var(--rose);
+    font-style: italic;
+  }
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium text-[#b3a9a5] transition-colors hover:border-[#4a4041] hover:text-text;
+  }
+  .pill-on {
+    @apply border-accent-hover bg-accent/[0.28] text-text;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.1em];
+  }
+  .chip-high {
+    @apply border-accent-hover bg-accent/[0.38] text-[#f3c4cc];
+  }
+  .chip-medium {
+    @apply border-[#5a2630] text-rose;
+  }
+  .chip-low {
+    @apply border-dashed border-[#5a4f50] text-soft;
+  }
+  .chip-plain {
+    @apply border-[#4a4041] text-soft;
+  }
+  .ruler {
+    display: none;
+  }
+}
+
+/* The depth ruler in the left margin, only where there is room for it */
+@media (min-width: 1200px) {
+  .ruler {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 16px;
+    z-index: 45;
+    pointer-events: none;
+    background:
+      linear-gradient(#6a5557 0 1px, transparent 1px) 0 0 / 16px 120px repeat-y,
+      linear-gradient(#3a2f30 0 1px, transparent 1px) 0 0 / 8px 24px repeat-y;
   }
 }
 
 /* react-diff-view, restyled to the dark burgundy palette */
 .diff {
-  --diff-background-color: var(--surface);
+  --diff-background-color: #100d0e;
   --diff-text-color: var(--text);
   --diff-font-family: "JetBrains Mono", ui-monospace, monospace;
   --diff-gutter-insert-background-color: var(--added-soft);
@@ -76,37 +153,14 @@ body {
   padding: 0 !important;
 }
 
-/* Hero banner: a blood moon over ruins, drawn with gradients and one SVG silhouette */
-.hero {
-  background:
-    radial-gradient(circle at 82% 30%, #a8323f 0 2.6rem, rgba(122, 30, 44, 0.38) 2.7rem 7rem, transparent 20rem),
-    linear-gradient(180deg, #170d10 0%, #0e0a0b 75%);
-}
-.hero-slim {
-  background:
-    radial-gradient(circle at 100% 0%, rgba(122, 30, 44, 0.4), transparent 16rem),
-    var(--surface);
-}
-
-/* Ground fog: a faint haze rising from the bottom edge of every page */
-body::after {
-  content: "";
-  position: fixed;
-  inset: auto 0 0 0;
-  height: 14rem;
-  pointer-events: none;
-  background: linear-gradient(to top, rgba(122, 30, 44, 0.07), transparent);
-  z-index: 0;
-}
 #root {
   position: relative;
-  z-index: 1;
 }
 
 /* Titles are set in a serif, like a case file; data stays monospaced */
 .title {
   font-family: "Newsreader", Georgia, serif;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: -0.01em;
 }
 
@@ -131,24 +185,19 @@ body::after {
 .code-excerpt .line::before {
   content: attr(data-line);
   display: inline-block;
-  width: 3rem;
-  margin-right: 0.75rem;
-  padding-right: 0.5rem;
+  width: 3.5rem;
+  margin-right: 0;
+  padding-right: 1.1rem;
   text-align: right;
-  color: var(--text-muted);
+  color: #7d7270;
   user-select: none;
 }
 .code-excerpt .line.hl {
-  background: var(--accent-soft);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: rgba(122, 30, 44, 0.2);
 }
 
 
 /* ---- Motion: slow and atmospheric; transform and opacity only ---- */
-@keyframes moon-breathe {
-  0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
-}
 @keyframes fog-drift {
   from { transform: translate3d(-7%, 0, 0); }
   to { transform: translate3d(7%, 0, 0); }
@@ -167,38 +216,95 @@ body::after {
   50% { transform: rotate(16deg) translateY(3px); }
 }
 
-.hero-moon {
-  position: absolute;
-  left: 82%;
-  top: 30%;
-  width: 18rem;
-  height: 18rem;
-  border-radius: 9999px;
-  pointer-events: none;
-  background: radial-gradient(circle, rgba(190, 56, 70, 0.5), transparent 62%);
-  animation: moon-breathe 7s ease-in-out infinite;
-}
-.hero-fog {
-  position: absolute;
-  left: -10%;
-  width: 120%;
-  pointer-events: none;
-  background: radial-gradient(ellipse at 50% 50%, rgba(237, 230, 225, 0.07), transparent 68%);
-  transition: transform 0.6s ease-out;
-}
-.hero-fog > div {
-  height: 100%;
-  background: inherit;
+.fog-drift {
   animation: fog-drift 24s ease-in-out infinite alternate;
 }
-.hero-ruins {
-  transform: translate3d(calc(var(--mx, 0) * -14px), 0, 0) scale(1.06);
-  transition: transform 0.5s ease-out;
+/* The cemetery gate, the moon and the fog of the entrance and the home hero */
+@keyframes moon-glow {
+  0%, 100% { box-shadow: 0 0 90px 30px rgba(184, 57, 74, 0.34), 0 0 240px 90px rgba(122, 30, 44, 0.2); }
+  50% { box-shadow: 0 0 120px 48px rgba(184, 57, 74, 0.5), 0 0 300px 120px rgba(122, 30, 44, 0.28); }
 }
-.hero-parallax-far {
-  transform: translate3d(calc(var(--mx, 0) * -6px), calc(var(--my, 0) * -4px), 0);
-  transition: transform 0.6s ease-out;
+@keyframes drift-a {
+  from { transform: translateX(-40px); }
+  to { transform: translateX(120px); }
 }
+@keyframes drift-b {
+  from { transform: translateX(60px); }
+  to { transform: translateX(-140px); }
+}
+@keyframes ring {
+  0% { box-shadow: 0 0 0 0 rgba(217, 138, 150, 0.45); }
+  100% { box-shadow: 0 0 0 12px rgba(217, 138, 150, 0); }
+}
+@keyframes twitch {
+  0%, 94% { transform: translate(0, 0); }
+  95% { transform: translate(3px, -1px); }
+  97% { transform: translate(-2px, 1px); }
+  99%, 100% { transform: translate(0, 0); }
+}
+@keyframes gate-left {
+  0% { transform: perspective(1400px) rotateY(0); opacity: 1; visibility: visible; }
+  85% { opacity: 1; }
+  100% { transform: perspective(1400px) rotateY(-84deg); opacity: 0; visibility: hidden; }
+}
+@keyframes gate-right {
+  0% { transform: perspective(1400px) rotateY(0); opacity: 1; visibility: visible; }
+  85% { opacity: 1; }
+  100% { transform: perspective(1400px) rotateY(84deg); opacity: 0; visibility: hidden; }
+}
+
+.moon-glow { animation: moon-glow 6s ease-in-out infinite; }
+.fog-a { animation: drift-a 22s ease-in-out infinite alternate; }
+.fog-b { animation: drift-b 28s ease-in-out infinite alternate; }
+.ring-pulse { animation: ring 2s ease-out infinite; }
+.frag {
+  position: absolute;
+  font: 400 14px "JetBrains Mono", ui-monospace, monospace;
+  color: #4d3f41;
+  white-space: pre;
+  pointer-events: none;
+  animation: twitch 9s steps(1) infinite;
+}
+
+/* Iron bars: horizontal rails and vertical spikes over a dim wash, shared by both gate halves */
+.gate,
+.gate-leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background:
+    linear-gradient(#3a2e30, #3a2e30) 0 9% / 100% 8px no-repeat,
+    linear-gradient(#3a2e30, #3a2e30) 0 50% / 100% 8px no-repeat,
+    linear-gradient(#3a2e30, #3a2e30) 0 91% / 100% 8px no-repeat,
+    repeating-linear-gradient(90deg, #2b2223 0 7px, transparent 7px 40px),
+    rgba(11, 10, 10, 0.55);
+}
+.gate-leaf { z-index: 3; }
+.gate { z-index: 40; pointer-events: none; }
+.gate-l { left: 0; transform-origin: left center; animation: gate-left 2.2s cubic-bezier(0.7, 0, 0.2, 1) 0.5s forwards; }
+.gate-r { right: 0; transform-origin: right center; animation: gate-right 2.2s cubic-bezier(0.7, 0, 0.2, 1) 0.5s forwards; }
+
+.enter-button {
+  display: inline-flex;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--accent-hover);
+  background: var(--accent);
+  padding: 0 30px;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+.enter-button:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(184, 57, 74, 0.35);
+}
+
 .ember {
   position: absolute;
   bottom: 2.5rem;
@@ -281,6 +387,7 @@ body::after {
     transition-delay: 0ms !important;
   }
   .ember { display: none; }
+  .gate, .frag { display: none; }
   .reveal { opacity: 1; transform: none; }
   .draw-line { transform: none; }
   .lift:hover { transform: none; }

@@ -62,9 +62,12 @@ export function CodeExcerpt({ excerpt, file }: Props) {
   }, [excerpt, isPython]);
 
   return (
-    <div className="card overflow-hidden">
-      <div className="border-b border-border bg-surface-2 px-3 py-1.5 font-mono text-xs text-muted">{file}</div>
-      <div className="code-excerpt overflow-x-auto py-2 font-mono text-[12.5px] leading-5">
+    <div className="overflow-hidden rounded-[20px] border border-border bg-[#100d0e]">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-surface-2 px-[22px] py-3.5">
+        <span className="font-mono text-[13px]">{file}</span>
+        <span className="font-mono text-[11.5px] uppercase tracking-[0.12em] text-muted">{isPython ? "Python" : "Text"}</span>
+      </div>
+      <div className="code-excerpt overflow-x-auto py-[18px] font-mono text-[13.5px] leading-[1.75]">
         {html ? (
           <div dangerouslySetInnerHTML={{ __html: html }} />
         ) : (
