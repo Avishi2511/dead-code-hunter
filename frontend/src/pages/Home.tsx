@@ -470,10 +470,10 @@ export function Home() {
             <div className="mx-auto max-w-[1360px] text-center">
               <p className="eyebrow">Bedrock</p>
               <h2 className="display mx-auto mt-[18px] max-w-[900px] text-[clamp(44px,6.4vw,92px)] leading-[0.98] tracking-[-0.025em]">
-                <em>Your code is read,</em> never run.
+                Dead code, <em>dug up and documented.</em>
               </h2>
               <div className="mt-10 flex flex-wrap justify-center gap-3 font-mono text-xs tracking-[0.14em]">
-                {["STATIC ANALYSIS", "NOTHING EXECUTED", "NO AI IN THE LOOP"].map((label) => (
+                {["EVIDENCE ON EVERY FIND", "GRADED BY CONFIDENCE", "CLEANUP READY TO REVIEW"].map((label) => (
                   <span key={label} className="rounded-full border border-[#4a2330] bg-accent-soft px-[18px] py-[9px] text-[#f3c4cc]">
                     {label}
                   </span>
